@@ -1,0 +1,29 @@
+{
+  "name": "unicast-mpv",
+  "version": "0.1.0",
+  "description": "A simple module that exposes MPV to be controlled through a RPC WebSockets API, that can be used with the unicast server",
+  "main": "index.js",
+  "bin": "lib/cli.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@pedromsilva/data-future": "^1.1.2",
+    "case": "^1.6.1",
+    "chalk": "^2.4.2",
+    "clui-logger": "^0.1.3",
+    "data-stopwatch": "^0.1.0",
+    "extend": "^3.0.2",
+    "js-yaml": "^3.13.1",
+    "mz": "^2.7.0",
+    "node-mpv": "git+https://github.com/00SteinsGate00/Node-MPV.git#Node-MPV-2",
+    "object-path": "^0.11.4",
+    "rpc-websockets": "^4.3.5"
+  },
+  "devDependencies": {
+    "@types/mz": "0.0.32",
+    "@types/node": "^11.13.4"
+  }
+}

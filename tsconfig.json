@@ -1,0 +1,20 @@
+{
+    "compilerOptions": {
+        "target": "es2016",
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "experimentalDecorators": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "noImplicitAny": false,
+        "sourceMap": true,
+        "allowJs": true,
+        "outDir": "lib/",
+        "lib": [
+            "es7", "esnext"
+        ]
+    },
+    "include": [
+        "src/**/*"
+    ]
+}
