@@ -1,5 +1,5 @@
 # unicast-mpv
-> A simple module that exposes [MPV](http://mpv.io/) to be controlled through a [RPC WebSockets](https://github.com/elpheria/rpc-websockets)API, that can be used with the [unicast](https://github.com/pedromsilvapt/unicast) server
+> A simple module that exposes [MPV](http://mpv.io/) to be controlled through a [RPC WebSockets](https://github.com/elpheria/rpc-websockets) API, that can be used with the [unicast](https://github.com/pedromsilvapt/unicast) server
 
 ## Installation
 This module can be used as a terminal application by simply installing it globally:
