@@ -61,7 +61,11 @@ export class Player {
         const status = await this.status.get();
 
         if ( status.path ) {
-            return this.mpv.stop();
+            await this.mpv.stop();
+        }
+
+        if ( this.config.get( 'quitOnStop' ) == true && this.mpv.isRunning() ) {
+            this.mpv.quit();
         }
 
         return;

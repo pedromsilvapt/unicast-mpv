@@ -32,6 +32,9 @@ player:
     # If false, when stopping a video, the player window is kept open. If true, it is automatically closed
     quitOnStop: true
 
+    # Determines if the player restarts everytime the user plays a new media when something was already playing
+    restartOnPlay: false
+
 server:
     # The network port where the socket server will listen for incoming connections
     port: 2019

@@ -1,6 +1,7 @@
 import { Commands } from './Commands';
 import { UnicastMpv } from '../UnicastMpv';
 import { string, tuple, optional } from '../Schema';
+import { Server } from 'http';
 
 export class PlayCommand extends Commands {
     constructor ( server : UnicastMpv ) {
@@ -10,11 +11,13 @@ export class PlayCommand extends Commands {
     }
 
     public async play ( file : string, subtitles : string ) {
-        if ( this.server.player.mpv.isRunning() ) {
-            await this.server.player.mpv.quit();
+        if ( this.server.player.config.get( 'restartOnPlay' ) == true ) {
+            this.server.player.mpv.quit();
         }
-    
-        await this.server.player.start();
+
+        if ( !this.server.player.mpv.isRunning() ) {
+            await this.server.player.start();
+        }
         
         await this.server.player.mpv.load( file );
 
