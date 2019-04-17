@@ -1,16 +1,16 @@
 import { Commands } from './Commands';
 import { UnicastMpv } from '../UnicastMpv';
-import { string, tuple, optional } from '../Schema';
-import { Server } from 'http';
+import { string, tuple, optional, any } from '../Schema';
+import { LoadFlags, LoadOptions } from '../Player';
 
 export class PlayCommand extends Commands {
     constructor ( server : UnicastMpv ) {
         super( server );
 
-        this.register( 'play', tuple( [ string(), optional( string() ) ] ), this.play.bind( this ) );
+        this.register( 'play', tuple( [ string(), optional( string() ), any() ] ), this.play.bind( this ) );
     }
 
-    public async play ( file : string, subtitles : string ) {
+    public async play ( file : string, subtitles : string = null, options : LoadOptions = {} ) {
         if ( this.server.player.config.get( 'restartOnPlay' ) == true ) {
             this.server.player.mpv.quit();
         }
@@ -19,7 +19,7 @@ export class PlayCommand extends Commands {
             await this.server.player.start();
         }
         
-        await this.server.player.mpv.load( file );
+        await this.server.player.load( file, LoadFlags.Replace, options );
 
         if ( subtitles ) {
             await this.server.player.mpv.addSubtitles( subtitles );

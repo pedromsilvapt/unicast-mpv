@@ -1,6 +1,15 @@
 import Mpv from 'node-mpv';
 import { Config } from './Config';
 import { Future } from '@pedromsilva/data-future';
+import { changeObjectCase } from './Utils/ChangeObjectCase';
+
+export function valueToMpv ( value : any ) {
+    if ( typeof value === 'boolean' ) {
+        return value ? 'yes' : 'no';
+    } else {
+        return value;
+    }
+}
 
 export class Player {
     public config : Config;
@@ -57,6 +66,15 @@ export class Player {
         }
     }
 
+    async load ( file : string, flags : LoadFlags = LoadFlags.Replace, options : LoadOptions ) {
+        options = changeObjectCase( options, 'kebab' );
+
+        const optionsString = Object.keys( options )
+            .map( key => `${key}=${valueToMpv(options[ key ])}` );
+        
+        await this.mpv.load( file, flags, optionsString );
+    }
+
     async stop () {
         const status = await this.status.get();
 
@@ -70,6 +88,21 @@ export class Player {
 
         return;
     }
+}
+
+export enum LoadFlags {
+    Replace = 'replace',
+    Append = 'append',
+    AppendPlay = 'append-play'
+}
+
+export interface LoadOptions {
+    start ?: number;
+    pause ?: boolean;
+    title ?: string;
+    mediaTitle ?: string;
+
+    [ key : string ] : any;
 }
 
 export interface StatusInfo {
