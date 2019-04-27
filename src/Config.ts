@@ -153,12 +153,14 @@ export class Config {
     static async loadAsync ( folder : string ) : Promise<Config> {
         let data = {};
 
-        let files = await Config.getFiles( folder );
-
-        for ( let file of files ) {
-            const content = await loadYamlFileAsync( path.join( folder, file ) );
-
-            data = extend( true, data, content );
+        if ( await fs.exists( folder ) ) {
+            let files = await Config.getFiles( folder );
+    
+            for ( let file of files ) {
+                const content = await loadYamlFileAsync( path.join( folder, file ) );
+    
+                data = extend( true, data, content );
+            }
         }
 
         return new Config( data );
@@ -167,12 +169,14 @@ export class Config {
     static load ( folder : string ) : Config {
         let data = {};
 
-        let files = Config.getFiles( folder );
-
-        for ( let file of files ) {
-            const content = loadYamlFile( path.join( folder, file ) );
-
-            data = extend( true, data, content );
+        if ( fs.existsSync( folder ) ) {
+            let files = Config.getFiles( folder );
+    
+            for ( let file of files ) {
+                const content = loadYamlFile( path.join( folder, file ) );
+    
+                data = extend( true, data, content );
+            }
         }
 
         return new Config( data );
