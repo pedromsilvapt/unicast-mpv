@@ -47,6 +47,18 @@ export class Player {
             args.push( '--fs' );
         }
 
+        const subtitlesConfig = changeObjectCase( this.config.get( 'subtitles', {} ), 'kebab' );
+
+        for ( let key in subtitlesConfig ) {
+            const value = subtitlesConfig[ key ];
+
+            if ( value === null || value === void 0 ) {
+                continue;
+            }
+
+            args.push( '--sub-' + key + '=' + valueToMpv( value ) );
+        }
+
         this.mpv = new Mpv( { binary: this.config.get( 'binary', null ), auto_restart: true }, args );
     }
     
@@ -101,6 +113,25 @@ export interface LoadOptions {
     pause ?: boolean;
     title ?: string;
     mediaTitle ?: string;
+    
+    // Subtitles
+    subFixTiming ?: boolean;
+    subFont ?: string;
+    subColor ?: string;
+    subBold ?: boolean;
+    subItalic ?: boolean;
+    
+    subSpacing ?: 0;
+
+    subBackColor ?: string;
+    subBorderColor ?: string;
+    subBorderSize ?: number;
+
+    subShadowColor ?: string;
+    subShadowOffset ?: number;
+
+    subMarginX ?: number;
+    subMarginY ?: number;
 
     [ key : string ] : any;
 }

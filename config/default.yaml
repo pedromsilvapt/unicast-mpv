@@ -14,6 +14,27 @@ player:
     # Determines if the player restarts everytime the user plays a new media when something was already playing
     restartOnPlay: false
 
+    # Options related to the display of subtitles on the video player
+    subtitles:
+        fixTiming: true
+
+        font: 'Droid Sans'
+        color: null
+        bold: true
+        italic: false
+        
+        spacing: 0
+
+        backColor: null
+        borderColor: null
+        borderSize: null
+
+        shadowColor: null
+        shadowOffset: 0
+
+        marginX: 25
+        marginY: 46
+
 server:
     # The network port where the socket server will listen for incoming connections
     port: 2019
