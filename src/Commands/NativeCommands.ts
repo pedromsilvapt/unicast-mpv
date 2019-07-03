@@ -23,6 +23,9 @@ export class NativeCommands extends Commands {
         this.registerNative( 'cycleProperty', [ string() ] );
 
         this.registerNative( 'subtitleScale', [ number() ] );
+        this.registerNative( 'adjustSubtitleTiming', [ number() ] );
+        this.registerNative( 'hideSubtitles' );
+        this.registerNative( 'showSubtitles' );
 
         this.register( 'showProgress', [], () => this.server.player.mpv.command( 'show-progress' ) );
     }
