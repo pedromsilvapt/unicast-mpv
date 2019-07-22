@@ -47,6 +47,14 @@ export class Player {
             args.push( '--fs' );
         }
 
+        if ( this.config.get( 'audioOutput', null ) != null ) {
+            args.push( '--ao=' + this.config.get( 'audioOutput' ) );
+        }
+
+        if ( this.config.get( 'audioDevice', null ) != null ) {
+            args.push( '--audio-device=' + this.config.get( 'audioDevice' ) );
+        }
+
         const subtitlesConfig = changeObjectCase( this.config.get( 'subtitles', {} ), 'kebab' );
 
         for ( let key in subtitlesConfig ) {
