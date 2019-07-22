@@ -89,10 +89,17 @@ export class Player {
     async load ( file : string, flags : LoadFlags = LoadFlags.Replace, options : LoadOptions ) {
         options = changeObjectCase( options, 'kebab' );
 
+        // Force subtitles delay back to zero when playing a new media file
+        if ( !( 'sub-delay' in options ) ) {
+            options[ 'sub-delay' ] = 0;
+        }
+
         const optionsString = Object.keys( options )
             .map( key => `${key}=${valueToMpv(options[ key ])}` );
-        
+
         await this.mpv.load( file, flags, optionsString );
+
+        this.mpv.adjustSubtitleTiming( 0 );
     }
 
     async stop () {
