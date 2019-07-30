@@ -47,6 +47,10 @@ export class Player {
             args.push( '--fs' );
         }
 
+        if ( this.config.get( 'videoOutput', null ) != null ) {
+            args.push( '--vo=' + this.config.get( 'videoOutput' ) );
+        }
+
         if ( this.config.get( 'audioOutput', null ) != null ) {
             args.push( '--ao=' + this.config.get( 'audioOutput' ) );
         }
@@ -147,6 +151,8 @@ export interface LoadOptions {
 
     subMarginX ?: number;
     subMarginY ?: number;
+
+    lavfiComplex ?: string;
 
     [ key : string ] : any;
 }

@@ -14,7 +14,12 @@ player:
     # Determines if the player restarts everytime the user plays a new media when something was already playing
     restartOnPlay: false
 
+    # Video output drivers. More info here https://mpv.io/manual/stable/#video-output-drivers
+    # Run `mpv --vo=help` to get a list of the available audio devices for MPV
+    videoOutput: null
+
     # Audio output drivers. More info here https://mpv.io/manual/stable/#audio-output-drivers
+    # Run `mpv --ao=help` to get a list of the available audio devices for MPV
     audioOutput: null
 
     # Allows setting a custom audio output device (a custom display for example)
