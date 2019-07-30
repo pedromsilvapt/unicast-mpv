@@ -6,19 +6,19 @@ export class Events {
     constructor ( server : UnicastMpv ) {
         this.server = server;
 
-        const connection = this.server.connection;
-
-        for ( let event of [ 'started', 'stopped', 'paused', 'resumed', 'seek', 'status' ] ) {
-            connection.event( event );
+        for ( let event of [ 'started', 'stopped', 'paused', 'resumed', 'seek', 'status', 'quit', 'crashed' ] ) {
+            this.server.event( event );
         }
 
         const mpv = this.server.player.mpv;
 
-        mpv.on( 'started', () => connection.emit( 'started' ) );
-        mpv.on( 'stopped', () => connection.emit( 'stopped' ) );
-        mpv.on( 'paused', () => connection.emit( 'paused' ) );
-        mpv.on( 'resumed', () => connection.emit( 'resumed' ) );
-        mpv.on( 'seek', data => connection.emit( 'seek', data ) );
-        mpv.on( 'statuschange', data => connection.emit( 'status', data ) );
+        mpv.on( 'started', () => this.server.emit( 'started' ) );
+        mpv.on( 'stopped', () => this.server.emit( 'stopped' ) );
+        mpv.on( 'paused', () => this.server.emit( 'paused' ) );
+        mpv.on( 'resumed', () => this.server.emit( 'resumed' ) );
+        mpv.on( 'seek', data => this.server.emit( 'seek', data ) );
+        mpv.on( 'statuschange', data => this.server.emit( 'status', data ) );
+        mpv.on( 'quit', data => this.server.emit( 'quit', data ) );
+        mpv.on( 'crashed', data => this.server.emit( 'crashed', data ) );
     }
 }
