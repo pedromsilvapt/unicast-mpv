@@ -28,6 +28,7 @@ export class Player {
         const args : string[] = [ 
             '--player-operation-mode=pseudo-gui',
             '--force-window',
+            '--idle=' + ( this.config.get( 'quitOnStop' ) ? 'once' : 'yes' ),
             '--terminal'
         ];
 
@@ -111,10 +112,6 @@ export class Player {
 
         if ( status.path ) {
             await this.mpv.stop();
-        }
-
-        if ( this.config.get( 'quitOnStop' ) == true && this.mpv.isRunning() ) {
-            this.mpv.quit();
         }
 
         return;
