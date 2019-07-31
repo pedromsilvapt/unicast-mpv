@@ -176,17 +176,26 @@ export class UnicastMpv {
 
         const rpcLogger = this.logger.service( 'rpc' );
 
+        // The names of commands to ignore when loggin (as to not pollute the console output). Errored commands are always logged
+        const ignoredCommands = [ 'status' ];
+        // Log ignored commands if they take more than time this to complete (in milliseconds)
+        const ignoredCommandMaxTime = 300;
+        // Ignore events when logging them to the console
+        const ignoredEvents = [ 'status' ];
+
         this.registerGlobalPreHook( ( args, command, ctx : { stopwatch: Stopwatch, live : LiveLogger } ) => {
             ctx.stopwatch = new Stopwatch();
             ctx.live = rpcLogger.service( command ).live();
-
-            ctx.live.debug( chalk.grey( `${ args.join( ' ' ) } running...` ) );
-
+            
+            if ( !ignoredCommands.includes( command ) ) {
+                ctx.live.debug( chalk.grey( `${ args.join( ' ' ) } running...` ) );
+            }
+            
             ctx.stopwatch.resume();
         } );
 
         this.registerGlobalEventHook( ( args, event, ctx ) => {
-            if ( event != 'status' ) {
+            if ( !ignoredEvents.includes( event ) ) {
                 rpcLogger.service( event ).debug( chalk.cyan( 'emit ' ) + JSON.stringify( args ) );
             }
         } );
@@ -200,15 +209,19 @@ export class UnicastMpv {
         new Events( this );
 
         this.registerGlobalPostHook( ( args, command, error, result, ctx : { stopwatch: Stopwatch, live : LiveLogger } ) => {
-            ctx.live.update( () => {
-                ctx.live.debug( `${ args.join( ' ' ) } ${ ctx.stopwatch.readHumanized() } ${ error ? chalk.red( 'FAILED' ) : '' }` );
+            const forceLogCommand = error || ctx.stopwatch.readMilliseconds() > ignoredCommandMaxTime;
 
-                if ( error && error.message ) {
-                    ctx.live.error( error.message + ( error.stack ? ( '\n' + error.stack ) : '' ), error );
-                } else if ( error && error.errcode && error.errmessage ) {
-                    ctx.live.error( `CODE ${ error.errcode } ${ error.method }: ${ error.errmessage }`, error );
-                }
-            } );
+            if ( !ignoredCommands.includes( command ) || !forceLogCommand ) {
+                ctx.live.update( () => {
+                    ctx.live.debug( `${ args.join( ' ' ) } ${ ctx.stopwatch.readHumanized() } ${ error ? chalk.red( 'FAILED' ) : '' }` );
+
+                    if ( error && error.message ) {
+                        ctx.live.error( error.message + ( error.stack ? ( '\n' + error.stack ) : '' ), error );
+                    } else if ( error && error.errcode && error.errmessage ) {
+                        ctx.live.error( `CODE ${ error.errcode } ${ error.method }: ${ error.errmessage }`, error );
+                    }
+                } );
+            }
 
             ctx.live.close();
         } );
