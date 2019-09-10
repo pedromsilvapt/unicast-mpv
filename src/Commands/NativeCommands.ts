@@ -1,4 +1,4 @@
-import { string, optional, number, any } from '../Schema';
+import { string, optional, number, any, object } from '../Schema';
 import { Commands } from './Commands';
 import { UnicastMpv } from '../UnicastMpv';
 
@@ -17,6 +17,7 @@ export class NativeCommands extends Commands {
         this.registerNative( 'volume', [ number() ] );
 
         this.registerNative( 'setProperty', [ string(), any() ] );
+        this.registerNative( 'setMultipleProperties', [ object() ] );
         this.registerNative( 'getProperty', [ string() ] );
         this.registerNative( 'addProperty', [ string(), number() ] );
         this.registerNative( 'multiplyProperty', [ string(), number() ] );

@@ -91,6 +91,12 @@ export class Player {
         }
     }
 
+    setMultipleProperties ( properties : any ) {
+        properties = changeObjectCase( properties, 'kebab' );
+
+        this.mpv.setMultipleProperties( properties );
+    }
+
     async load ( file : string, flags : LoadFlags = LoadFlags.Replace, options : LoadOptions ) {
         options = changeObjectCase( options, 'kebab' );
 

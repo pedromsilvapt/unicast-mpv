@@ -401,7 +401,7 @@ export function array ( subSchema : any ) {
     return new ArrayTypeSchema( subSchema );
 }
 
-export function object ( subSchema : any, strict : boolean = false ) {
+export function object ( subSchema : any = {}, strict : boolean = false ) {
     return new ObjectTypeSchema( subSchema, strict );
 }
 
