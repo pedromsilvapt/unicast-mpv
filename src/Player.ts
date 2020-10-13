@@ -60,6 +60,10 @@ export class Player {
             args.push( '--audio-device=' + this.config.get( 'audioDevice' ) );
         }
 
+        if ( this.config.get( 'args', null ) != null ) {
+            args.push( this.config.get( 'args' ) );
+        }
+
         const subtitlesConfig = changeObjectCase( this.config.get( 'subtitles', {} ), 'kebab' );
 
         for ( let key in subtitlesConfig ) {

@@ -26,6 +26,8 @@ player:
     # Run `mpv --audio-device=help` to get a list of the available audio devices for MPV
     audioDevice: null
 
+    args: []
+
     # Options related to the display of subtitles on the video player
     subtitles:
         fixTiming: true

@@ -211,7 +211,7 @@ export class UnicastMpv {
         this.registerGlobalPostHook( ( args, command, error, result, ctx : { stopwatch: Stopwatch, live : LiveLogger } ) => {
             const forceLogCommand = error || ctx.stopwatch.readMilliseconds() > ignoredCommandMaxTime;
 
-            if ( !ignoredCommands.includes( command ) || !forceLogCommand ) {
+            if ( !ignoredCommands.includes( command ) || forceLogCommand ) {
                 ctx.live.update( () => {
                     ctx.live.debug( `${ args.join( ' ' ) } ${ ctx.stopwatch.readHumanized() } ${ error ? chalk.red( 'FAILED' ) : '' }` );
 
