@@ -1,10 +1,10 @@
 import { Server as WebSocketServer } from 'rpc-websockets';
 import { NativeCommands } from './Commands/NativeCommands';
-import { Logger, ConsoleBackend, LiveLogger } from 'clui-logger';
+import { Logger, ConsoleBackend, ActivityLogger, Activity, ActivityLoggerHFP } from 'clui-logger';
+import { TIMESTAMP_SHORT } from 'clui-logger/lib/Backends/ConsoleBackend';
 import { StatusCommand } from './Commands/StatusCommand';
 import { QuitCommand } from './Commands/QuitCommand';
 import { PlayCommand } from './Commands/PlayCommand';
-import { Stopwatch } from 'data-stopwatch';
 import chalk from 'chalk';
 import { Config } from './Config';
 import { Player } from './Player';
@@ -47,7 +47,7 @@ export class UnicastMpv {
     constructor ( config ?: Config, logger ?: Logger ) {
         this.config = config || UnicastMpv.baseConfig();
 
-        this.logger = logger || new Logger( new ConsoleBackend() );
+        this.logger = logger || new Logger( new ConsoleBackend( TIMESTAMP_SHORT ) );
 
         this.player = new Player( this.config.slice( 'player' ) );
 
@@ -176,24 +176,15 @@ export class UnicastMpv {
 
         const rpcLogger = this.logger.service( 'rpc' );
 
-        // The names of commands to ignore when loggin (as to not pollute the console output). Errored commands are always logged
-        const ignoredCommands = [ 'status' ];
-        // Log ignored commands if they take more than time this to complete (in milliseconds)
-        const ignoredCommandMaxTime = 300;
         // Ignore events when logging them to the console
         const ignoredEvents = [ 'status' ];
 
-        this.registerGlobalPreHook( ( args, command, ctx : { stopwatch: Stopwatch, live : LiveLogger } ) => {
-            ctx.stopwatch = new Stopwatch();
-            ctx.live = rpcLogger.service( command ).live();
-            
-            if ( !ignoredCommands.includes( command ) ) {
-                ctx.live.debug( chalk.grey( `${ args.join( ' ' ) } running...` ) );
-            }
-            
-            ctx.stopwatch.resume();
-        } );
+        const activityLogger = new RpcActivityLogger( rpcLogger );
 
+        activityLogger.registerHighFrequencyPattern( /status/ );
+
+        this.registerGlobalPreHook( activityLogger.before() );
+        this.registerGlobalPostHook( activityLogger.after() );
         this.registerGlobalEventHook( ( args, event, ctx ) => {
             if ( !ignoredEvents.includes( event ) ) {
                 rpcLogger.service( event ).debug( chalk.cyan( 'emit ' ) + JSON.stringify( args ) );
@@ -208,24 +199,6 @@ export class UnicastMpv {
 
         new Events( this );
 
-        this.registerGlobalPostHook( ( args, command, error, result, ctx : { stopwatch: Stopwatch, live : LiveLogger } ) => {
-            const forceLogCommand = error || ctx.stopwatch.readMilliseconds() > ignoredCommandMaxTime;
-
-            if ( !ignoredCommands.includes( command ) || forceLogCommand ) {
-                ctx.live.update( () => {
-                    ctx.live.debug( `${ args.join( ' ' ) } ${ ctx.stopwatch.readHumanized() } ${ error ? chalk.red( 'FAILED' ) : '' }` );
-
-                    if ( error && error.message ) {
-                        ctx.live.error( error.message + ( error.stack ? ( '\n' + error.stack ) : '' ), error );
-                    } else if ( error && error.errcode && error.errmessage ) {
-                        ctx.live.error( `CODE ${ error.errcode } ${ error.method }: ${ error.errmessage }`, error );
-                    }
-                } );
-            }
-
-            ctx.live.close();
-        } );
-
         await new Promise( ( resolve, reject ) => {
             this.connection.on( 'listening', resolve )
     
@@ -233,5 +206,73 @@ export class UnicastMpv {
         } );
 
         this.logger.info( 'Server listening on port ' + this.config.get( 'server.port' ) );
+    }
+}
+
+export interface CommandActivity extends Activity {
+    command: string;
+    args: any[];
+    error ?: any;
+    result ?: any;
+}
+
+export class RpcActivityLogger extends ActivityLogger<CommandActivity> {
+    // The names of commands to ignore when loggin (as to not pollute the console output). Errored commands are always logged
+    public ignoredCommands = [];
+    // Log ignored commands if they take more than time this to complete (in milliseconds)
+    public ignoredCommandMaxTime = 300;
+
+    protected findHighFrequencyPattern ( activity: CommandActivity ) : ActivityLoggerHFP {
+        return this.highFrequencyPatterns.find( pattern => pattern.pattern.test( activity.command ) );
+    }
+
+    protected matchHighFrequencyPattern ( pattern: ActivityLoggerHFP, activity: CommandActivity ) : string[] {
+        return activity.command.match( pattern.pattern );
+    }
+
+    protected logBeginActivity ( activity: CommandActivity ) : void {
+        const { command, args, live } = activity;
+
+        if ( !this.ignoredCommands.includes( command ) ) {
+            live.service( command ).debug( chalk.grey( `${ args.join( ' ' ) } running...` ) );
+        }
+    }
+
+    protected logEndActivity ( activity: CommandActivity ) : void {
+        const { command, args, error, stopwatch, live } = activity;
+
+        const forceLogCommand = error || stopwatch.readMilliseconds() > this.ignoredCommandMaxTime;
+
+        const logger = live.service( command );
+
+        if ( !this.ignoredCommands.includes( command ) || forceLogCommand ) {
+            logger.update( () => {
+                logger.debug( `${ args.join( ' ' ) } ${ stopwatch.readHumanized() } ${ error ? chalk.red( 'FAILED' ) : '' }` );
+
+                if ( error && error.message ) {
+                    logger.error( error.message + ( error.stack ? ( '\n' + error.stack ) : '' ), error );
+                } else if ( error && error.errcode && error.errmessage ) {
+                    logger.error( `CODE ${ error.errcode } ${ error.method }: ${ error.errmessage }`, error );
+                }
+            } );
+        }
+    }
+
+    public before () {
+        return ( args : any[], command : string, ctx : CommandActivity ) => {
+            ctx.command = command;
+            ctx.args = args;
+            
+            this.begin( ctx );
+        };
+    }
+
+    public after () {
+        return ( args : any[], command : string, error : any, result : any, ctx : CommandActivity ) => {
+            ctx.error = error;
+            ctx.result = result;
+
+            this.end( ctx );
+        };
     }
 }
