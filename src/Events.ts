@@ -17,7 +17,7 @@ export class Events {
         mpv.on( 'paused', () => this.server.emit( 'paused' ) );
         mpv.on( 'resumed', () => this.server.emit( 'resumed' ) );
         mpv.on( 'seek', data => this.server.emit( 'seek', data ) );
-        mpv.on( 'statuschange', data => this.server.emit( 'status', data ) );
+        mpv.on( 'status', data => this.server.emit( 'status', data ) );
         mpv.on( 'quit', data => this.server.emit( 'quit', data ) );
         mpv.on( 'crashed', data => this.server.emit( 'crashed', data ) );
     }

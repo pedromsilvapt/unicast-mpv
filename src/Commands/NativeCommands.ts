@@ -1,4 +1,4 @@
-import { string, optional, number, any, object } from '../Schema';
+import { string, optional, number, any, object, boolean } from '../Schema';
 import { Commands } from './Commands';
 import { UnicastMpv } from '../UnicastMpv';
 
@@ -12,8 +12,7 @@ export class NativeCommands extends Commands {
         this.registerNative( 'resume' );
         this.registerNative( 'seek', [ number() ] );
         this.registerNative( 'goToPosition', [ number() ] );
-        this.registerNative( 'mute' );
-        this.registerNative( 'unmute' );
+        this.registerNative( 'mute', [ boolean() ] );
         this.registerNative( 'volume', [ number() ] );
 
         this.registerNative( 'setProperty', [ string(), any() ] );
@@ -28,6 +27,6 @@ export class NativeCommands extends Commands {
         this.registerNative( 'hideSubtitles' );
         this.registerNative( 'showSubtitles' );
 
-        this.register( 'showProgress', [], () => this.server.player.mpv.command( 'show-progress' ) );
+        this.register( 'showProgress', [], () => this.server.player.mpv.command( 'show-progress', [] ) );
     }
 }

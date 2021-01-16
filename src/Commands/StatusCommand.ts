@@ -13,7 +13,7 @@ export class StatusCommand extends Commands {
         this.server.registerPostHook( 'stop', () => this.server.player.status.stop() );
         this.server.registerPreHook( 'play', () => this.server.player.status.play() );
 
-        this.server.player.mpv.on( 'statuschange', status => this.server.player.status.update( changeObjectCase( status ) as any ) );
+        this.server.player.mpv.on( 'status', status => this.server.player.status.update( changeObjectCase( status ) as any ) );
     }
 
     public async status () {

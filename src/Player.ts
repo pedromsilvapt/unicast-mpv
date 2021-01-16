@@ -1,4 +1,4 @@
-import Mpv from 'node-mpv';
+import NodeMpv from 'node-mpv';
 import { Config } from './Config';
 import { Future } from '@pedromsilva/data-future';
 import { changeObjectCase } from './Utils/ChangeObjectCase';
@@ -14,12 +14,10 @@ export function valueToMpv ( value : any ) {
 export class Player {
     public config : Config;
 
-    public mpv : any;
+    public mpv : NodeMpv;
 
     public status : PlayerStatus;
     
-    protected observedPropertiesId : number = 13;
-
     protected observedProperties : string[] = [];
 
     constructor ( config : Config ) {
@@ -76,22 +74,22 @@ export class Player {
             args.push( '--sub-' + key + '=' + valueToMpv( value ) );
         }
 
-        this.mpv = new Mpv( { binary: this.config.get( 'binary', null ), auto_restart: true }, args );
+        this.mpv = new NodeMpv( { binary: this.config.get( 'binary', null ), auto_restart: true }, args );
     }
     
     observeProperty ( property : string ) {
         this.observedProperties.push( property );
 
         if ( this.mpv.isRunning() ) {
-            this.mpv.observeProperty( property, 12 + this.observedProperties.length );
+            this.mpv.observeProperty( property );
         }
     }
 
     async start () {
         await this.mpv.start();
 
-        for ( let [ index, property ] of this.observedProperties.entries() ) {
-            this.mpv.observeProperty( property, 13 + index );
+        for ( let property of this.observedProperties ) {
+            this.mpv.observeProperty( property );
         }
     }
 
@@ -164,6 +162,11 @@ export interface LoadOptions {
     [ key : string ] : any;
 }
 
+export interface StatusChange {
+    property: string;
+    value: any;
+}
+
 export interface StatusInfo {
     mute : boolean;
     pause : boolean;
@@ -230,12 +233,8 @@ export class PlayerStatus {
         }
     }
 
-    update ( status : StatusInfo ) {
-        if ( status != null && this.lastStatus != null ) {
-            status.position = this.lastStatus.position;
-        }
-
-        this.lastStatus = status;
+    update ( status : StatusChange ) {
+        this.lastStatus[ status.property ] = status.value;
 
         if ( this.lastStatusFuture != null ) {
             const future = this.lastStatusFuture;

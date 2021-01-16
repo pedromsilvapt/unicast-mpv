@@ -181,7 +181,7 @@ export class UnicastMpv {
 
         const activityLogger = new RpcActivityLogger( rpcLogger );
 
-        activityLogger.registerHighFrequencyPattern( /status/ );
+        activityLogger.registerHighFrequencyPattern( /status/, null, 60 * 5 );
 
         this.registerGlobalPreHook( activityLogger.before() );
         this.registerGlobalPostHook( activityLogger.after() );
