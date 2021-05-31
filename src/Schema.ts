@@ -55,7 +55,7 @@ export abstract class TypeSchema {
             return schema;
         } else if ( schema instanceof Array ) {
             if ( schema.length == 0 ) {
-                ArrayTypeSchema.normalize( new AnyTypeSchema() );
+                return ArrayTypeSchema.normalize( new AnyTypeSchema() );
             } else if ( schema.length == 1 ) {
                 return ArrayTypeSchema.normalize( schema );
             } else {
@@ -138,6 +138,90 @@ export class AnyTypeSchema extends TypeSchema {
     }
 
     run ( data : any ) {
+        return data;
+    }
+}
+
+export class UnionTypeSchema extends TypeSchema {
+    typeSchemas: TypeSchema[];
+    
+    constructor ( ...typeSchemas: any[] ) {
+        super();
+
+        this.typeSchemas = typeSchemas.map( type => TypeSchema.normalize( type ) );
+    }
+
+    validate ( data : any ) : SchemaValidationResult {
+        const errors: SchemaValidationError[] = [];
+
+        for ( const schema of this.typeSchemas ) {
+            const schemaErrors = schema.validate( data );
+
+            if ( schemaErrors === null ) {
+                return null;
+            }
+
+            if ( schemaErrors instanceof Array ) {
+                errors.push( ...schemaErrors );
+            } else {
+                errors.push( schemaErrors );
+            }
+        }
+
+        if ( errors.length === 0 ) {
+            return null;
+        }
+
+        return errors;
+    }
+
+    run ( data : any ) {
+        for ( const schema of this.typeSchemas ) {
+            const schemaErrors = schema.validate( data );
+
+            if ( schemaErrors === null ) {
+                return schema.run( schema );
+            }
+        }
+
+        return data;
+    }
+}
+
+export class IntersectionTypeSchema extends TypeSchema {
+    typeSchemas: TypeSchema[];
+    
+    constructor ( ...typeSchemas: any[] ) {
+        super();
+
+        this.typeSchemas = typeSchemas.map( type => TypeSchema.normalize( type ) );
+    }
+
+    validate ( data : any ) : SchemaValidationResult {
+        const errors: SchemaValidationError[] = [];
+
+        for ( const schema of this.typeSchemas ) {
+            const schemaErrors = schema.validate( data );
+
+            if ( schemaErrors instanceof Array ) {
+                errors.push( ...schemaErrors );
+            } else if ( schemaErrors != null ) {
+                errors.push( schemaErrors );
+            }
+        }
+
+        if ( errors.length === 0 ) {
+            return null;
+        }
+
+        return errors;
+    }
+
+    run ( data : any ) {
+        for ( const schema of this.typeSchemas ) {
+            data = schema.run( data );
+        }
+
         return data;
     }
 }
@@ -275,7 +359,8 @@ export class ArrayTypeSchema extends TypeSchema {
                     } else if ( errors !== null ) {
                         return errors.prefix( index.toString() );
                     }
-                } ).filter( error => error != null )
+                } )
+                .filter( error => error != null )
                 .reduce( ( arr, errors ) => {
                     if ( errors instanceof Array ) {
                         arr.push( ...errors );
@@ -403,6 +488,14 @@ export function array ( subSchema : any ) {
 
 export function object ( subSchema : any = {}, strict : boolean = false ) {
     return new ObjectTypeSchema( subSchema, strict );
+}
+
+export function union ( ...typeSchemas : any[] ) {
+    return new UnionTypeSchema( ...typeSchemas );
+}
+
+export function intersection ( ...typeSchemas : any[] ) {
+    return new IntersectionTypeSchema( ...typeSchemas );
 }
 
 export function tuple ( subSchema : any ) {

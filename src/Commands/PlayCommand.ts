@@ -12,15 +12,15 @@ export class PlayCommand extends Commands {
 
     public async play ( file : string, subtitles : string = null, options : LoadOptions = {} ) {
         if ( this.server.player.config.get( 'restartOnPlay' ) == true ) {
-            this.server.player.mpv.quit();
+            await this.server.player.mpv.quit();
         }
-
+        
         if ( !this.server.player.mpv.isRunning() ) {
             await this.server.player.start();
         }
-        
-        await this.server.player.load( file, LoadFlags.Replace, options );
 
+        await this.server.player.load( file, LoadFlags.Replace, options );
+        
         if ( subtitles ) {
             await this.server.player.mpv.addSubtitles( subtitles );
         }

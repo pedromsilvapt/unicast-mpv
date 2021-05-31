@@ -1,11 +1,20 @@
 {
   "name": "unicast-mpv",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "description": "A simple module that exposes MPV to be controlled through a RPC WebSockets API, that can be used with the unicast server",
   "main": "lib/index.js",
   "bin": "lib/cli.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "pkg": {
+    "targets": ["node12-linux-x64", "node12-macos-x64", "node12-win-x64"],
+    "outputPath": "./build/",
+    "scripts": "lib/**/*.js",
+    "assets": [
+      "src/**/*.js",
+      "config/**/*.yaml"
+    ]
   },
   "author": "",
   "license": "ISC",

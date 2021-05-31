@@ -2,6 +2,7 @@ import NodeMpv from 'node-mpv';
 import { Config } from './Config';
 import { Future } from '@pedromsilva/data-future';
 import { changeObjectCase } from './Utils/ChangeObjectCase';
+import Case from 'case';
 
 export function valueToMpv ( value : any ) {
     if ( typeof value === 'boolean' ) {
@@ -26,7 +27,6 @@ export class Player {
         const args : string[] = [ 
             '--player-operation-mode=pseudo-gui',
             '--force-window',
-            '--idle=' + ( this.config.get( 'quitOnStop' ) ? 'once' : 'yes' ),
             '--terminal'
         ];
 
@@ -181,7 +181,13 @@ export interface StatusInfo {
     subScale : number;
     subVisibility : boolean;
     loop : string;
+    fullscreen: boolean;
 }
+
+export const StatusInfoRequiredKeys = [
+    'duration', 'position', 'filename', 'path', 
+    'mediaTitle', 'playlistPos', 'playlistCount'
+] as const;
 
 export class PlayerStatus {
     public player : Player;
@@ -199,7 +205,8 @@ export class PlayerStatus {
         playlistCount: 0,
         loop: "no",
         subVisibility: true,
-        subScale: 1
+        subScale: 1,
+        fullscreen: false,
     };
 
     protected lastStatusFuture : Future<void> = null;
@@ -213,7 +220,9 @@ export class PlayerStatus {
     }
 
     play () {
-        this.lastStatus = null;
+        for ( let key of StatusInfoRequiredKeys ) {
+            delete this.lastStatus[key];
+        }
 
         this.lastStatusFuture = new Future();
     }
@@ -234,14 +243,18 @@ export class PlayerStatus {
     }
 
     update ( status : StatusChange ) {
-        this.lastStatus[ status.property ] = status.value;
+        this.lastStatus[ Case.camel( status.property ) ] = status.value;
 
         if ( this.lastStatusFuture != null ) {
-            const future = this.lastStatusFuture;
+            const missingKeys = StatusInfoRequiredKeys.filter(key => !(key in this.lastStatus));
 
-            this.lastStatusFuture = null;
-
-            future.resolve();
+            if (missingKeys.length == 0) {
+                const future = this.lastStatusFuture;
+    
+                this.lastStatusFuture = null;
+    
+                future.resolve();
+            }
         }
     }
 
@@ -266,9 +279,9 @@ export class TimeoutError extends Error {
 
 }
 
-export function timeout <T> ( promise : Promise<T>, duration : number, onTimeout : T | Promise<T> = Promise.reject( new TimeoutError() ) ) {
+export function timeout <T> ( promise : Promise<T>, duration : number, onTimeout : T | Promise<T> = null ) {
     return Promise.race( [
         promise,
-        new Promise( resolve => setTimeout( () => resolve( onTimeout ), duration ) )
+        new Promise( ( resolve, reject ) => setTimeout( () => onTimeout ? resolve( onTimeout ) : reject( new TimeoutError() ), duration ) )
     ] );
 }

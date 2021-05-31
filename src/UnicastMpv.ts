@@ -163,6 +163,14 @@ export class UnicastMpv {
 
                 return result;
             } catch ( error ) {
+                if (error.verbose) {
+                    this.logger.error( error.verbose + ' in ' + error.method );
+                } else if ( error.message ) {
+                    this.logger.error( error.message );
+                } else {
+                    this.logger.error( error );
+                }
+
                 await this.triggerPostHooks( command, args, error, null, ctx );
             }
         } );
