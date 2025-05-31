@@ -16,5 +16,10 @@ if ( process.argv.length > 2 ) {
 
 const server = new UnicastMpv( Config.merge( configs ) );
 
+process.on('unhandledRejection', error => {
+    // Will print "unhandledRejection err is not defined"
+    console.log('unhandledRejection', error);
+});
+
 server.listen()
     .catch( error => server.logger.fatal( error.message + '\n' + error.stack, error ) );
