@@ -59,7 +59,7 @@ export class Player {
         }
 
         if ( this.config.get( 'args', null ) != null ) {
-            args.push( this.config.get( 'args' ) );
+            args.push( ...this.config.get( 'args' ) );
         }
 
         const subtitlesConfig = changeObjectCase( this.config.get( 'subtitles', {} ), 'kebab' );
