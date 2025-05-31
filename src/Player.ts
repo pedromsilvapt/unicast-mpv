@@ -74,7 +74,11 @@ export class Player {
             args.push( '--sub-' + key + '=' + valueToMpv( value ) );
         }
 
-        this.mpv = new NodeMpv( { binary: this.config.get( 'binary', null ), auto_restart: true }, args );
+        this.mpv = new NodeMpv( {
+            binary: this.config.get( 'binary', null ),
+            auto_restart: true,
+            ipc_command: this.config.get( 'ipcCommand' )
+        } as any, args );
     }
     
     observeProperty ( property : string ) {
