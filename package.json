@@ -8,7 +8,11 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "pkg": {
-    "targets": ["node12-linux-x64", "node12-macos-x64", "node12-win-x64"],
+    "targets": [
+      "node12-linux-x64",
+      "node12-macos-x64",
+      "node12-win-x64"
+    ],
     "outputPath": "./build/",
     "scripts": "lib/**/*.js",
     "assets": [
@@ -27,12 +31,13 @@
     "extend": "^3.0.2",
     "js-yaml": "^3.13.1",
     "mz": "^2.7.0",
-    "node-mpv": "^2.0.0-beta.1",
+    "node-mpv": "github:pedromsilvapt/Node-MPV#83e9132acedbf7189ef349f46abd7a9e849713b3",
     "object-path": "^0.11.4",
     "rpc-websockets": "^4.3.5"
   },
   "devDependencies": {
     "@types/mz": "0.0.32",
-    "@types/node": "^11.13.4"
+    "@types/node": "^11.13.4",
+    "typescript": "^4.9.5"
   }
 }
