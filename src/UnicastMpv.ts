@@ -242,7 +242,7 @@ export class RpcActivityLogger extends ActivityLogger<CommandActivity> {
         const { command, args, live } = activity;
 
         if ( !this.ignoredCommands.includes( command ) ) {
-            live.service( command ).debug( chalk.grey( `${ args.join( ' ' ) } running...` ) );
+            live.service( command ).debug( chalk.grey( `${ args.map( arg => JSON.stringify( arg ) ).join( ' ' ) } running...` ) );
         }
     }
 
@@ -255,7 +255,7 @@ export class RpcActivityLogger extends ActivityLogger<CommandActivity> {
 
         if ( !this.ignoredCommands.includes( command ) || forceLogCommand ) {
             logger.update( () => {
-                logger.debug( `${ args.join( ' ' ) } ${ stopwatch.readHumanized() } ${ error ? chalk.red( 'FAILED' ) : '' }` );
+                logger.debug( `${ args.map( arg => JSON.stringify( arg ) ).join( ' ' ) } ${ stopwatch.readHumanized() } ${ error ? chalk.red( 'FAILED' ) : '' }` );
 
                 if ( error && error.message ) {
                     logger.error( error.message + ( error.stack ? ( '\n' + error.stack ) : '' ), error );
