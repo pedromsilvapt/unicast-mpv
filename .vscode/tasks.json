@@ -27,9 +27,6 @@
             "label": "Build",
             "type": "shell",
             "command": "make build",
-            "options": {
-                "cwd": "${workspaceFolder}/golang/"
-            },
             "isBackground": true,
             "problemMatcher": [],
             "group": "none",

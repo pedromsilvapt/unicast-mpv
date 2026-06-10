@@ -53,32 +53,28 @@ func getFreePort() int {
 	return l.Addr().(*net.TCPAddr).Port
 }
 
-func newTestConfig(port int) *config.Config {
-	return config.NewConfig(map[string]interface{}{
-		"server": map[string]interface{}{
-			"port":    port,
-			"address": "127.0.0.1",
+func newTestConfig(port int) *config.AppConfig {
+	return &config.AppConfig{
+		Server: config.ServerConfig{
+			Port:    port,
+			Address: "127.0.0.1",
 		},
-		"player": map[string]interface{}{
-			"fullscreen":   false,
-			"quitOnStop":   true,
-			"restartOnPlay": false,
-			"subtitles": map[string]interface{}{
-				"fixTiming": true,
+		Player: config.PlayerConfig{
+			Fullscreen:    false,
+			QuitOnStop:    true,
+			RestartOnPlay: false,
+			Subtitles: config.SubtitlesConfig{
+				FixTiming: true,
 			},
 		},
-	})
+	}
 }
 
-func newTestServer(t *testing.T, cfg *config.Config) (*server.Server, int) {
+func newTestServerFromAppConfig(t *testing.T, appCfg *config.AppConfig) (*server.Server, int) {
 	t.Helper()
-	port := getFreePort()
-	if cfg == nil {
-		cfg = newTestConfig(port)
-	}
 	log := logger.New(logger.WithColorize(false), logger.WithMinLevel(logger.WarnLevel))
-	srv := server.NewServer(cfg, log.Service("rpc"))
-	return srv, port
+	srv := server.NewServer(&appCfg.Server, log.Service("rpc"))
+	return srv, appCfg.Server.Port
 }
 
 func startServer(t *testing.T, srv *server.Server) {
@@ -144,7 +140,7 @@ func readNotification(conn *websocket.Conn, timeout time.Duration) (map[string]i
 func TestConfigLayering(t *testing.T) {
 	dir := t.TempDir()
 
-	defaultYAML := "player:\n  fullscreen: true\n  monitor: null\nserver:\n  port: 3000\n  address: 0.0.0.0\n"
+	defaultYAML := "player:\n  fullscreen: true\n  monitor: -1\nserver:\n  port: 3000\n  address: 0.0.0.0\n"
 	if err := os.WriteFile(filepath.Join(dir, "default.yaml"), []byte(defaultYAML), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -160,48 +156,42 @@ func TestConfigLayering(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cfg, err := config.Load(dir)
+	layers, err := config.LoadLayersFromDir(dir)
 	if err != nil {
-		t.Fatalf("Load error: %v", err)
+		t.Fatalf("LoadLayersFromDir error: %v", err)
 	}
 
-	if !cfg.GetBool("player.fullscreen") {
+	appCfg, err := config.LoadAppConfig(layers...)
+	if err != nil {
+		t.Fatalf("LoadAppConfig error: %v", err)
+	}
+	if !appCfg.Player.Fullscreen {
 		t.Error("expected player.fullscreen=true from default")
 	}
-	if cfg.GetString("player.binary") != "/usr/bin/mpv" {
-		t.Errorf("expected player.binary=/usr/bin/mpv from platform, got %s", cfg.GetString("player.binary"))
+	if appCfg.Player.Binary != "/usr/bin/mpv" {
+		t.Errorf("expected player.binary=/usr/bin/mpv from platform, got %s", appCfg.Player.Binary)
 	}
-	if cfg.GetInt("server.port") != 2019 {
-		t.Errorf("expected server.port=2019 from local, got %d", cfg.GetInt("server.port"))
+	if appCfg.Server.Port != 2019 {
+		t.Errorf("expected server.port=2019 from local, got %d", appCfg.Server.Port)
 	}
-	if cfg.GetString("server.address") != "0.0.0.0" {
-		t.Errorf("expected server.address=0.0.0.0 from default, got %s", cfg.GetString("server.address"))
+	if appCfg.Server.Address != "0.0.0.0" {
+		t.Errorf("expected server.address=0.0.0.0 from default, got %s", appCfg.Server.Address)
 	}
 }
 
-// TestConfigMergeOrdering tests that merged config respects priority
+// TestConfigMergeOrdering tests that sequential unmarshal respects priority
 func TestConfigMergeOrdering(t *testing.T) {
-	base := config.NewConfig(map[string]interface{}{
-		"server": map[string]interface{}{
-			"port": 3000,
-		},
-		"player": map[string]interface{}{
-			"fullscreen": true,
-		},
-	})
+	base := "server:\n  port: 3000\nplayer:\n  fullscreen: true\n"
+	local := "server:\n  port: 2019\n"
 
-	local := config.NewConfig(map[string]interface{}{
-		"server": map[string]interface{}{
-			"port": 2019,
-		},
-	})
-
-	merged := config.Merge(base, local)
-
-	if merged.GetInt("server.port") != 2019 {
-		t.Errorf("expected server.port=2019 from local override, got %d", merged.GetInt("server.port"))
+	appCfg, err := config.LoadAppConfig([]byte(base), []byte(local))
+	if err != nil {
+		t.Fatalf("LoadAppConfig error: %v", err)
 	}
-	if merged.GetBool("player.fullscreen") != true {
+	if appCfg.Server.Port != 2019 {
+		t.Errorf("expected server.port=2019 from local override, got %d", appCfg.Server.Port)
+	}
+	if !appCfg.Player.Fullscreen {
 		t.Error("expected player.fullscreen=true from base")
 	}
 }
@@ -225,13 +215,17 @@ func TestConfigDefaultsFromEmbedded(t *testing.T) {
 		}
 	}
 
-	cfg, err := config.Load(dir)
+	layers, err := config.LoadLayersFromDir(dir)
 	if err != nil {
-		t.Fatalf("Load error: %v", err)
+		t.Fatalf("LoadLayersFromDir error: %v", err)
 	}
 
-	if cfg.GetInt("server.port") != 2019 {
-		t.Errorf("expected server.port=2019 from default config, got %d", cfg.GetInt("server.port"))
+	appCfg, err := config.LoadAppConfig(layers...)
+	if err != nil {
+		t.Fatalf("LoadAppConfig error: %v", err)
+	}
+	if appCfg.Server.Port != 2019 {
+		t.Errorf("expected server.port=2019 from default config, got %d", appCfg.Server.Port)
 	}
 }
 
@@ -243,56 +237,41 @@ func TestEmbeddedConfigMatchesNodeJS(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cfg, err := config.Load(dir)
+	layers, err := config.LoadLayersFromDir(dir)
 	if err != nil {
-		t.Fatalf("Load error: %v", err)
+		t.Fatalf("LoadLayersFromDir error: %v", err)
 	}
 
-	type check struct {
-		path     string
-		expected interface{}
+	appCfg, err := config.LoadAppConfig(layers...)
+	if err != nil {
+		t.Fatalf("LoadAppConfig error: %v", err)
 	}
 
-	checks := []check{
-		{"player.fullscreen", true},
-		{"player.quitOnStop", true},
-		{"player.restartOnPlay", false},
-		{"server.port", 2019},
-		{"server.address", "0.0.0.0"},
+	if !appCfg.Player.Fullscreen {
+		t.Errorf("config player.fullscreen: expected true, got %v", appCfg.Player.Fullscreen)
 	}
-
-	for _, c := range checks {
-		actual := cfg.Get(c.path)
-		switch exp := c.expected.(type) {
-		case int:
-			if cfg.GetInt(c.path) != exp {
-				t.Errorf("config %s: expected %v, got %v", c.path, exp, cfg.GetInt(c.path))
-			}
-		case string:
-			if cfg.GetString(c.path) != exp {
-				t.Errorf("config %s: expected %v, got %v", c.path, exp, cfg.GetString(c.path))
-			}
-		case bool:
-			if cfg.GetBool(c.path) != exp {
-				t.Errorf("config %s: expected %v, got %v", c.path, exp, cfg.GetBool(c.path))
-			}
-		default:
-			if actual != c.expected {
-				t.Errorf("config %s: expected %v, got %v", c.path, c.expected, actual)
-			}
-		}
+	if !appCfg.Player.QuitOnStop {
+		t.Errorf("config player.quitOnStop: expected true, got %v", appCfg.Player.QuitOnStop)
+	}
+	if appCfg.Player.RestartOnPlay {
+		t.Errorf("config player.restartOnPlay: expected false, got %v", appCfg.Player.RestartOnPlay)
+	}
+	if appCfg.Server.Port != 2019 {
+		t.Errorf("config server.port: expected 2019, got %d", appCfg.Server.Port)
+	}
+	if appCfg.Server.Address != "0.0.0.0" {
+		t.Errorf("config server.address: expected 0.0.0.0, got %s", appCfg.Server.Address)
 	}
 }
 
 // TestWireServerConfigPlayer tests the wiring: Config -> Server -> Player
 func TestWireServerConfigPlayer(t *testing.T) {
 	port := getFreePort()
-	cfg := newTestConfig(port)
+	appCfg := newTestConfig(port)
 
-	log := logger.New(logger.WithColorize(false), logger.WithMinLevel(logger.WarnLevel))
-	srv := server.NewServer(cfg, log.Service("rpc"))
+	srv, _ := newTestServerFromAppConfig(t, appCfg)
 
-	playerCfg := cfg.Slice("player")
+	playerCfg := &appCfg.Player
 	mpvInst := mpv.NewMPV(process.ProcessConfig{})
 	playerInst := player.NewPlayer(playerCfg, mpvInst, nil)
 
@@ -323,9 +302,8 @@ func TestWireServerConfigPlayer(t *testing.T) {
 // TestWireEventsRegistration verifies all events are registered when Bridge is called
 func TestWireEventsRegistration(t *testing.T) {
 	port := getFreePort()
-	cfg := newTestConfig(port)
-	log := logger.New(logger.WithColorize(false), logger.WithMinLevel(logger.WarnLevel))
-	srv := server.NewServer(cfg, log.Service("rpc"))
+	appCfg := newTestConfig(port)
+	srv, _ := newTestServerFromAppConfig(t, appCfg)
 
 	mpvInst := mpv.NewMPV(process.ProcessConfig{
 		Binary:      "mpv",
@@ -348,12 +326,11 @@ func TestWireEventsRegistration(t *testing.T) {
 // TestServerRPCMethods tests calling all registered RPC methods via WebSocket
 func TestServerRPCMethods(t *testing.T) {
 	port := getFreePort()
-	cfg := newTestConfig(port)
-	log := logger.New(logger.WithColorize(false), logger.WithMinLevel(logger.WarnLevel))
+	appCfg := newTestConfig(port)
 
-	srv := server.NewServer(cfg, log.Service("rpc"))
+	srv, _ := newTestServerFromAppConfig(t, appCfg)
 
-	playerCfg := cfg.Slice("player")
+	playerCfg := &appCfg.Player
 	mpvInst2 := mpv.NewMPV(process.ProcessConfig{})
 	playerInst := player.NewPlayer(playerCfg, mpvInst2, nil)
 
@@ -423,10 +400,9 @@ func TestServerRPCMethods(t *testing.T) {
 // TestServerMethodNotFound tests calling an unregistered method
 func TestServerMethodNotFound(t *testing.T) {
 	port := getFreePort()
-	cfg := newTestConfig(port)
-	log := logger.New(logger.WithColorize(false), logger.WithMinLevel(logger.WarnLevel))
+	appCfg := newTestConfig(port)
 
-	srv := server.NewServer(cfg, log.Service("rpc"))
+	srv, _ := newTestServerFromAppConfig(t, appCfg)
 
 	startServer(t, srv)
 	defer srv.Close()
@@ -457,10 +433,9 @@ func TestServerMethodNotFound(t *testing.T) {
 // TestServerEventEmission tests that events are emitted correctly over WebSocket
 func TestServerEventEmission(t *testing.T) {
 	port := getFreePort()
-	cfg := newTestConfig(port)
-	log := logger.New(logger.WithColorize(false), logger.WithMinLevel(logger.WarnLevel))
+	appCfg := newTestConfig(port)
 
-	srv := server.NewServer(cfg, log.Service("rpc"))
+	srv, _ := newTestServerFromAppConfig(t, appCfg)
 	srv.RegisterEvent("started")
 	srv.RegisterEvent("stopped")
 	srv.RegisterEvent("paused")
@@ -514,10 +489,9 @@ func TestServerEventEmission(t *testing.T) {
 // TestServerSeekEventData verifies seek events contain {start, end} data
 func TestServerSeekEventData(t *testing.T) {
 	port := getFreePort()
-	cfg := newTestConfig(port)
-	log := logger.New(logger.WithColorize(false), logger.WithMinLevel(logger.WarnLevel))
+	appCfg := newTestConfig(port)
 
-	srv := server.NewServer(cfg, log.Service("rpc"))
+	srv, _ := newTestServerFromAppConfig(t, appCfg)
 	srv.RegisterEvent("seek")
 
 	startServer(t, srv)
@@ -564,10 +538,9 @@ func TestServerSeekEventData(t *testing.T) {
 // TestServerSchemaValidation tests that schema validation works for RPC methods
 func TestServerSchemaValidation(t *testing.T) {
 	port := getFreePort()
-	cfg := newTestConfig(port)
-	log := logger.New(logger.WithColorize(false), logger.WithMinLevel(logger.WarnLevel))
+	appCfg := newTestConfig(port)
 
-	srv := server.NewServer(cfg, log.Service("rpc"))
+	srv, _ := newTestServerFromAppConfig(t, appCfg)
 
 	srv.Register("add", schema.Tuple(schema.Number(), schema.Number()), func(args []interface{}) (interface{}, error) {
 		a, _ := args[0].(float64)
@@ -618,10 +591,9 @@ func TestServerSchemaValidation(t *testing.T) {
 // TestHooksWiring tests that global pre/post hooks work in the integration setup
 func TestHooksWiring(t *testing.T) {
 	port := getFreePort()
-	cfg := newTestConfig(port)
-	log := logger.New(logger.WithColorize(false), logger.WithMinLevel(logger.WarnLevel))
+	appCfg := newTestConfig(port)
 
-	srv := server.NewServer(cfg, log.Service("rpc"))
+	srv, _ := newTestServerFromAppConfig(t, appCfg)
 
 	var preHookCalled bool
 	var postHookCalled bool
@@ -669,10 +641,9 @@ func TestHooksWiring(t *testing.T) {
 // TestConcurrentWebSocketClients tests multiple clients connecting simultaneously
 func TestConcurrentWebSocketClients(t *testing.T) {
 	port := getFreePort()
-	cfg := newTestConfig(port)
-	log := logger.New(logger.WithColorize(false), logger.WithMinLevel(logger.WarnLevel))
+	appCfg := newTestConfig(port)
 
-	srv := server.NewServer(cfg, log.Service("rpc"))
+	srv, _ := newTestServerFromAppConfig(t, appCfg)
 	srv.Register("echo", schema.Array(schema.Any()), func(args []interface{}) (interface{}, error) {
 		return args, nil
 	})
@@ -727,10 +698,9 @@ func TestConcurrentWebSocketClients(t *testing.T) {
 // TestEventBroadcastToAllClients tests that events are broadcast to all connected clients
 func TestEventBroadcastToAllClients(t *testing.T) {
 	port := getFreePort()
-	cfg := newTestConfig(port)
-	log := logger.New(logger.WithColorize(false), logger.WithMinLevel(logger.WarnLevel))
+	appCfg := newTestConfig(port)
 
-	srv := server.NewServer(cfg, log.Service("rpc"))
+	srv, _ := newTestServerFromAppConfig(t, appCfg)
 	srv.RegisterEvent("update")
 
 	startServer(t, srv)
@@ -851,10 +821,9 @@ func TestPlayerStatusStop(t *testing.T) {
 // TestHighFrequencyPatternRegistration tests that high frequency patterns work
 func TestHighFrequencyPatternRegistration(t *testing.T) {
 	port := getFreePort()
-	cfg := newTestConfig(port)
-	log := logger.New(logger.WithColorize(false), logger.WithMinLevel(logger.WarnLevel))
+	appCfg := newTestConfig(port)
 
-	srv := server.NewServer(cfg, log.Service("rpc"))
+	srv, _ := newTestServerFromAppConfig(t, appCfg)
 
 	srv.RegisterHighFrequencyPattern(regexp.MustCompile(`status`), nil, 300)
 
@@ -866,12 +835,11 @@ func TestHighFrequencyPatternRegistration(t *testing.T) {
 // TestFullWiring creates the complete wiring but does not actually start MPV
 func TestFullWiring(t *testing.T) {
 	port := getFreePort()
-	cfg := newTestConfig(port)
+	appCfg := newTestConfig(port)
 
-	log := logger.New(logger.WithColorize(false), logger.WithMinLevel(logger.WarnLevel))
-	srv := server.NewServer(cfg, log.Service("rpc"))
+	srv, _ := newTestServerFromAppConfig(t, appCfg)
 
-	playerCfg := cfg.Slice("player")
+	playerCfg := &appCfg.Player
 	mpvInst := mpv.NewMPV(process.ProcessConfig{
 		Binary:      "mpv",
 		AutoRestart: true,
@@ -927,17 +895,16 @@ func TestFullWiring(t *testing.T) {
 
 // TestMPVBuildArgs verifies MPV args are built correctly from config
 func TestMPVBuildArgs(t *testing.T) {
-	playerCfg := config.NewConfig(map[string]interface{}{
-		"fullscreen": true,
-		"onTop":      false,
-		"monitor":    nil,
-		"args":       []interface{}{"--gpu-api=opengl"},
-		"subtitles": map[string]interface{}{
-			"fixTiming": true,
-			"font":      "Droid Sans",
-			"bold":      true,
+	playerCfg := &config.PlayerConfig{
+		Fullscreen: true,
+		OnTop:      false,
+		Args:       []string{"--gpu-api=opengl"},
+		Subtitles: config.SubtitlesConfig{
+			FixTiming: true,
+			Font:      "Droid Sans",
+			Bold:      true,
 		},
-	})
+	}
 
 	args := player.BuildMPVArgs(playerCfg)
 
@@ -962,9 +929,9 @@ func TestMPVBuildArgs(t *testing.T) {
 
 // TestMPVBuildArgsAudioDevice tests audio device args
 func TestMPVBuildArgsAudioDevice(t *testing.T) {
-	playerCfg := config.NewConfig(map[string]interface{}{
-		"audioDevice": "alsa",
-	})
+	playerCfg := &config.PlayerConfig{
+		AudioDevice: "alsa",
+	}
 
 	args := player.BuildMPVArgs(playerCfg)
 
@@ -987,12 +954,16 @@ func TestBuildMPVArgsFromConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cfg, err := config.Load(dir)
+	layers, err := config.LoadLayersFromDir(dir)
 	if err != nil {
-		t.Fatalf("Load error: %v", err)
+		t.Fatalf("LoadLayersFromDir error: %v", err)
 	}
 
-	playerCfg := cfg.Slice("player")
+	appCfg, err := config.LoadAppConfig(layers...)
+	if err != nil {
+		t.Fatalf("LoadAppConfig error: %v", err)
+	}
+	playerCfg := &appCfg.Player
 	args := player.BuildMPVArgs(playerCfg)
 
 	hasFS := false
@@ -1025,10 +996,9 @@ func TestWithRealMPVProcess(t *testing.T) {
 	}
 
 	port := getFreePort()
-	cfg := newTestConfig(port)
-	log := logger.New(logger.WithColorize(false), logger.WithMinLevel(logger.WarnLevel))
+	appCfg := newTestConfig(port)
 
-	srv := server.NewServer(cfg, log.Service("rpc"))
+	srv, _ := newTestServerFromAppConfig(t, appCfg)
 
 	socketPath := filepath.Join(t.TempDir(), "mpv-integration.sock")
 	procCfg := process.ProcessConfig{
@@ -1051,7 +1021,7 @@ func TestWithRealMPVProcess(t *testing.T) {
 		}
 	}()
 
-	playerCfg := cfg.Slice("player")
+	playerCfg := &appCfg.Player
 	playerInst := player.NewPlayer(playerCfg, mpvInst, nil)
 
 	registry := commands.NewCommandRegistry(srv, playerInst, mpvInst)
@@ -1133,10 +1103,9 @@ func TestMPVEventsEmitOverSocket(t *testing.T) {
 	}
 
 	port := getFreePort()
-	cfg := newTestConfig(port)
-	log := logger.New(logger.WithColorize(false), logger.WithMinLevel(logger.WarnLevel))
+	appCfg := newTestConfig(port)
 
-	srv := server.NewServer(cfg, log.Service("rpc"))
+	srv, _ := newTestServerFromAppConfig(t, appCfg)
 
 	socketPath := filepath.Join(t.TempDir(), "mpv-events.sock")
 	procCfg := process.ProcessConfig{

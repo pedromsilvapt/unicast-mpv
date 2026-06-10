@@ -65,19 +65,18 @@ func getFreePort() int {
 func newTestServer(t *testing.T) (*Server, int) {
 	t.Helper()
 	port := getFreePort()
-	cfg := newConfig(port)
+	cfg := newServerConfig(port)
 	logger := &testLogger{}
 	srv := NewServer(cfg, logger)
 	return srv, port
 }
 
-func newConfig(port int) *config.Config {
-	return config.NewConfig(map[string]interface{}{
-		"server": map[string]interface{}{
-			"port":    port,
-			"address": "127.0.0.1",
-		},
-	})
+func newServerConfig(port int) *config.ServerConfig {
+	addr := "127.0.0.1"
+	return &config.ServerConfig{
+		Port:    port,
+		Address: addr,
+	}
 }
 
 func startServer(t *testing.T, srv *Server) {
@@ -129,7 +128,7 @@ func readResponse(conn *websocket.Conn) (map[string]interface{}, error) {
 }
 
 func TestNewServer(t *testing.T) {
-	cfg := newConfig(8080)
+	cfg := newServerConfig(8080)
 	srv := NewServer(cfg, nil)
 	if srv == nil {
 		t.Fatal("expected non-nil server")
@@ -137,7 +136,7 @@ func TestNewServer(t *testing.T) {
 }
 
 func TestNewServerWithLogger(t *testing.T) {
-	cfg := newConfig(8080)
+	cfg := newServerConfig(8080)
 	logger := &testLogger{}
 	srv := NewServer(cfg, logger)
 	if srv == nil {
@@ -146,7 +145,7 @@ func TestNewServerWithLogger(t *testing.T) {
 }
 
 func TestRegisterMethod(t *testing.T) {
-	cfg := newConfig(8080)
+	cfg := newServerConfig(8080)
 	srv := NewServer(cfg, nil)
 	srv.Register("add", schema.Tuple(schema.Number(), schema.Number()), func(args []interface{}) (interface{}, error) {
 		a, _ := args[0].(float64)
@@ -159,7 +158,7 @@ func TestRegisterMethod(t *testing.T) {
 }
 
 func TestRegisterEvent(t *testing.T) {
-	cfg := newConfig(8080)
+	cfg := newServerConfig(8080)
 	srv := NewServer(cfg, nil)
 	srv.RegisterEvent("status")
 	if len(srv.events) != 1 {

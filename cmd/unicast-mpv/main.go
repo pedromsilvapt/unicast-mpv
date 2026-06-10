@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
@@ -34,14 +35,14 @@ func main() {
 		}
 	}()
 
-	cfg, err := loadConfig(os.Args[1:])
+	appCfg, err := loadAppConfig(os.Args[1:])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to load config: %v\n", err)
 		os.Exit(1)
 	}
 
 	minLevel := logger.InfoLevel
-	if cfg.GetBool("debug", false) {
+	if appCfg.Debug {
 		minLevel = logger.DebugLevel
 	}
 	log := logger.New(logger.WithMinLevel(minLevel))
@@ -50,18 +51,18 @@ func main() {
 
 	ignoredEvents := map[string]bool{"status": true}
 
-	srv := server.NewServer(cfg, rpcLogger)
+	srv := server.NewServer(&appCfg.Server, rpcLogger)
 
-	mpvInst := createMPV(cfg, log)
+	mpvInst := createMPV(&appCfg.Player, log)
 
-	playerInst := player.NewPlayer(cfg.Slice("player"), mpvInst, log)
+	playerInst := player.NewPlayer(&appCfg.Player, mpvInst, log)
 
 	registry := commands.NewCommandRegistry(srv, playerInst, mpvInst)
 
 	commands.NewNativeCommands(registry)
 	commands.NewStatusCommand(registry, playerInst.Status, log.Service("status"))
 	commands.NewQuitCommand(registry)
-	commands.NewPlayCommand(registry, cfg.Slice("player"), log)
+	commands.NewPlayCommand(registry, &appCfg.Player, log)
 
 	events.Bridge(mpvInst, srv)
 
@@ -82,36 +83,41 @@ func main() {
 
 	setupSignalHandler(srv, mpvInst, log)
 
-	log.Infof("Starting unicast-mpv on %s:%d", cfg.GetString("server.address", "0.0.0.0"), cfg.GetInt("server.port", 2019))
+	log.Infof("Starting unicast-mpv on %s:%d", appCfg.Server.Address, appCfg.Server.Port)
 
 	if err := srv.Listen(); err != nil {
 		log.Fatalf("server error: %v", err)
 	}
 }
 
-func loadConfig(args []string) (*config.Config, error) {
-	baseCfg, err := loadBaseConfig()
+func loadAppConfig(args []string) (*config.AppConfig, error) {
+	baseLayers, err := loadBaseConfigLayers()
 	if err != nil {
 		return nil, fmt.Errorf("load base config: %w", err)
 	}
 
-	var overrideCfg *config.Config
+	var overrideLayers [][]byte
 	if len(args) > 0 && args[0] != "" {
-		overrideCfg, err = config.LoadFile(args[0])
+		data, err := os.ReadFile(args[0])
 		if err != nil {
-			return nil, fmt.Errorf("load config from %s: %w", args[0], err)
+			return nil, fmt.Errorf("read config %s: %w", args[0], err)
 		}
+		overrideLayers = [][]byte{data}
 	} else {
-		overrideCfg, err = config.LoadOptional("")
-		if err != nil {
-			overrideCfg = config.NewConfig(nil)
+		home, err := os.UserHomeDir()
+		if err == nil {
+			path := filepath.Join(home, "unicast-mpv.yaml")
+			if data, err := os.ReadFile(path); err == nil {
+				overrideLayers = [][]byte{data}
+			}
 		}
 	}
 
-	return config.Merge(baseCfg, overrideCfg), nil
+	allLayers := append(baseLayers, overrideLayers...)
+	return config.LoadAppConfig(allLayers...)
 }
 
-func loadBaseConfig() (*config.Config, error) {
+func loadBaseConfigLayers() ([][]byte, error) {
 	tempDir, err := os.MkdirTemp("", "unicast-mpv-config-*")
 	if err != nil {
 		return nil, fmt.Errorf("create temp dir: %w", err)
@@ -133,47 +139,21 @@ func loadBaseConfig() (*config.Config, error) {
 		}
 	}
 
-	return config.Load(tempDir)
+	layers, err := config.LoadLayersFromDir(tempDir)
+	if err != nil {
+		return nil, err
+	}
+	return layers, nil
 }
 
-func createMPV(cfg *config.Config, log *logger.Logger) *mpv.MPV {
-	playerCfg := cfg.Slice("player")
-
-	binary := ""
-	if b := playerCfg.Get("binary"); b != nil {
-		if s, ok := b.(string); ok && s != "" {
-			binary = s
-		}
-	}
-
-	ipcCommand := ""
-	if ic := playerCfg.Get("ipcCommand"); ic != nil {
-		if s, ok := ic.(string); ok && s != "" {
-			ipcCommand = s
-		}
-	}
-
-	autoRestart := true
-	if ar := playerCfg.Get("autoRestart"); ar != nil {
-		if b, ok := ar.(bool); ok {
-			autoRestart = b
-		}
-	}
-
-	socketPath := "/tmp/node-mpv.sock"
-	if sp := playerCfg.Get("socketPath"); sp != nil {
-		if s, ok := sp.(string); ok && s != "" {
-			socketPath = s
-		}
-	}
-
+func createMPV(playerCfg *config.PlayerConfig, log *logger.Logger) *mpv.MPV {
 	args := player.BuildMPVArgs(playerCfg)
 
 	procCfg := process.ProcessConfig{
-		Binary:      binary,
-		SocketPath:  socketPath,
-		AutoRestart: autoRestart,
-		IPCCommand:  ipcCommand,
+		Binary:      playerCfg.Binary,
+		SocketPath:  playerCfg.SocketPath,
+		AutoRestart: playerCfg.AutoRestart,
+		IPCCommand:  playerCfg.IPCCommand,
 		MPVArgs:     args,
 	}
 

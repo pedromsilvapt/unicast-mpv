@@ -11,11 +11,11 @@ import (
 
 type PlayCommand struct {
 	*CommandRegistry
-	config *config.Config
+	config *config.PlayerConfig
 	log    *logger.Logger
 }
 
-func NewPlayCommand(registry *CommandRegistry, cfg *config.Config, log *logger.Logger) *PlayCommand {
+func NewPlayCommand(registry *CommandRegistry, cfg *config.PlayerConfig, log *logger.Logger) *PlayCommand {
 	pc := &PlayCommand{
 		CommandRegistry: registry,
 		config:           cfg,
@@ -59,7 +59,7 @@ func (pc *PlayCommand) play(args []interface{}) (interface{}, error) {
 		pc.log.Infof("play: file=%s subtitles=%s", file, subtitles)
 	}
 
-	if pc.config.GetBool("restartOnPlay", false) {
+	if pc.config.RestartOnPlay {
 		if pc.mpv.IsRunning() {
 			if pc.log != nil {
 				pc.log.Debug("play: restarting mpv (restartOnPlay=true)")

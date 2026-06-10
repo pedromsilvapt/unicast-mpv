@@ -1,13 +1,9 @@
 player:
     fullscreen: true
-    monitor: null
+    monitor: -1
     onTop: false
     quitOnStop: true
     restartOnPlay: false
-    videoOutput: null
-    audioOutput: null
-    audioDevice: null
-    args: []
     subtitles:
         fixTiming: true
         font: 'Droid Sans'

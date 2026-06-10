@@ -29,72 +29,60 @@ func ValueToMpv(value interface{}) string {
 	}
 }
 
-func BuildMPVArgs(cfg *config.Config) []string {
+func BuildMPVArgs(cfg *config.PlayerConfig) []string {
 	args := []string{
 		"--player-operation-mode=pseudo-gui",
 		"--force-window",
 		"--terminal",
 	}
 
-	if cfg.GetBool("quitOnStop", true) {
+	if cfg.QuitOnStop {
 		args = append(args, "--idle=once")
 	} else {
 		args = append(args, "--idle=yes")
 	}
 
-	monitor := cfg.GetInt("monitor", -1)
-	if monitor >= 0 {
-		args = append(args, fmt.Sprintf("--screen=%d", monitor))
-		args = append(args, fmt.Sprintf("--fs-screen=%d", monitor))
+	if cfg.Monitor >= 0 {
+		args = append(args, fmt.Sprintf("--screen=%d", cfg.Monitor))
+		args = append(args, fmt.Sprintf("--fs-screen=%d", cfg.Monitor))
 	}
 
-	if cfg.GetBool("onTop", false) {
+	if cfg.OnTop {
 		args = append(args, "--ontop")
 	}
 
-	if cfg.GetBool("fullscreen", false) {
+	if cfg.Fullscreen {
 		args = append(args, "--fs")
 	}
 
-	if videoOutput := cfg.Get("videoOutput"); videoOutput != nil {
-		args = append(args, fmt.Sprintf("--vo=%v", videoOutput))
+	if cfg.VideoOutput != "" {
+		args = append(args, fmt.Sprintf("--vo=%s", cfg.VideoOutput))
 	}
 
-	if audioOutput := cfg.Get("audioOutput"); audioOutput != nil {
-		args = append(args, fmt.Sprintf("--ao=%v", audioOutput))
+	if cfg.AudioOutput != "" {
+		args = append(args, fmt.Sprintf("--ao=%s", cfg.AudioOutput))
 	}
 
-	if audioDevice := cfg.Get("audioDevice"); audioDevice != nil {
-		args = append(args, fmt.Sprintf("--audio-device=%v", audioDevice))
+	if cfg.AudioDevice != "" {
+		args = append(args, fmt.Sprintf("--audio-device=%s", cfg.AudioDevice))
 	}
 
-	if customArgs := cfg.Get("args"); customArgs != nil {
-		if argsSlice, ok := customArgs.([]interface{}); ok {
-			for _, a := range argsSlice {
-				if s, ok := a.(string); ok {
-					args = append(args, s)
-				}
+	if len(cfg.Args) > 0 {
+		for _, a := range cfg.Args {
+			if a != "" {
+				args = append(args, a)
 			}
 		}
 	}
 
-	subtitlesConfig := cfg.Slice("subtitles")
-	subtitlesData := subtitlesConfig.Data()
-	if subtitlesData != nil {
-		kebabSubs := cases.Convert(subtitlesData, cases.Kebab)
-		for key, value := range kebabSubs {
-			if value == nil {
-				continue
-			}
-			args = append(args, fmt.Sprintf("--sub-%s=%s", key, ValueToMpv(value)))
-		}
-	}
+	subArgs := cfg.Subtitles.ToMPVArgs()
+	args = append(args, subArgs...)
 
 	return args
 }
 
 type Player struct {
-	Config *config.Config
+	Config *config.PlayerConfig
 	MPV    *mpv.MPV
 	Status *PlayerStatus
 	log    *logger.Logger
@@ -102,7 +90,7 @@ type Player struct {
 	observedProperties []string
 }
 
-func NewPlayer(cfg *config.Config, mpvInst *mpv.MPV, log *logger.Logger) *Player {
+func NewPlayer(cfg *config.PlayerConfig, mpvInst *mpv.MPV, log *logger.Logger) *Player {
 	var statusLog *logger.Logger
 	if log != nil {
 		statusLog = log.Service("status")

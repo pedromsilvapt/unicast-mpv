@@ -10,13 +10,11 @@ import (
 	"github.com/unicast/unicast-mpv/pkg/server"
 )
 
-func newTestConfig() *config.Config {
-	return config.NewConfig(map[string]interface{}{
-		"server": map[string]interface{}{
-			"port":    0,
-			"address": "127.0.0.1",
-		},
-	})
+func newTestServerConfig() *config.ServerConfig {
+	return &config.ServerConfig{
+		Port:    0,
+		Address: "127.0.0.1",
+	}
 }
 
 func newTestProcessConfig() process.ProcessConfig {
@@ -26,8 +24,8 @@ func newTestProcessConfig() process.ProcessConfig {
 }
 
 func TestBridge_RegistersAllEvents(t *testing.T) {
-	cfg := newTestConfig()
-	srv := server.NewServer(cfg, nil)
+	srvCfg := newTestServerConfig()
+	srv := server.NewServer(srvCfg, nil)
 	m := mpv.NewMPV(newTestProcessConfig())
 
 	Bridge(m, srv)
@@ -41,8 +39,8 @@ func TestBridge_RegistersAllEvents(t *testing.T) {
 }
 
 func TestBridge_RegistersExactlyEightEvents(t *testing.T) {
-	cfg := newTestConfig()
-	srv := server.NewServer(cfg, nil)
+	srvCfg := newTestServerConfig()
+	srv := server.NewServer(srvCfg, nil)
 	m := mpv.NewMPV(newTestProcessConfig())
 
 	Bridge(m, srv)

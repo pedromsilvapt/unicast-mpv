@@ -394,8 +394,8 @@ func TestPlayerStatus_GetNotRunningStops(t *testing.T) {
 }
 
 func TestBuildArgs_BasicArgs(t *testing.T) {
-	cfg := config.NewConfig(map[string]interface{}{})
-	args := BuildMPVArgs(cfg)
+	cfg := config.DefaultAppConfig().Player
+	args := BuildMPVArgs(&cfg)
 
 	found := make(map[string]bool)
 	for _, a := range args {
@@ -417,9 +417,7 @@ func TestBuildArgs_BasicArgs(t *testing.T) {
 }
 
 func TestBuildArgs_QuitOnStopTrue(t *testing.T) {
-	cfg := config.NewConfig(map[string]interface{}{
-		"quitOnStop": true,
-	})
+	cfg := &config.PlayerConfig{QuitOnStop: true}
 	args := BuildMPVArgs(cfg)
 
 	found := make(map[string]bool)
@@ -436,9 +434,7 @@ func TestBuildArgs_QuitOnStopTrue(t *testing.T) {
 }
 
 func TestBuildArgs_QuitOnStopFalse(t *testing.T) {
-	cfg := config.NewConfig(map[string]interface{}{
-		"quitOnStop": false,
-	})
+	cfg := &config.PlayerConfig{QuitOnStop: false}
 	args := BuildMPVArgs(cfg)
 
 	found := make(map[string]bool)
@@ -455,9 +451,7 @@ func TestBuildArgs_QuitOnStopFalse(t *testing.T) {
 }
 
 func TestBuildArgs_Monitor(t *testing.T) {
-	cfg := config.NewConfig(map[string]interface{}{
-		"monitor": 1,
-	})
+	cfg := &config.PlayerConfig{Monitor: 1}
 	args := BuildMPVArgs(cfg)
 
 	found := make(map[string]bool)
@@ -474,20 +468,18 @@ func TestBuildArgs_Monitor(t *testing.T) {
 }
 
 func TestBuildArgs_NoMonitor(t *testing.T) {
-	cfg := config.NewConfig(map[string]interface{}{})
+	cfg := &config.PlayerConfig{Monitor: -1}
 	args := BuildMPVArgs(cfg)
 
 	for _, a := range args {
 		if a == "--screen=0" || a == "--fs-screen=0" {
-			t.Errorf("expected no screen args when monitor not set, got %q", a)
+			t.Errorf("expected no screen args when monitor=-1, got %q", a)
 		}
 	}
 }
 
 func TestBuildArgs_OnTop(t *testing.T) {
-	cfg := config.NewConfig(map[string]interface{}{
-		"onTop": true,
-	})
+	cfg := &config.PlayerConfig{OnTop: true}
 	args := BuildMPVArgs(cfg)
 
 	found := false
@@ -502,9 +494,7 @@ func TestBuildArgs_OnTop(t *testing.T) {
 }
 
 func TestBuildArgs_Fullscreen(t *testing.T) {
-	cfg := config.NewConfig(map[string]interface{}{
-		"fullscreen": true,
-	})
+	cfg := &config.PlayerConfig{Fullscreen: true}
 	args := BuildMPVArgs(cfg)
 
 	found := false
@@ -519,9 +509,7 @@ func TestBuildArgs_Fullscreen(t *testing.T) {
 }
 
 func TestBuildArgs_VideoOutput(t *testing.T) {
-	cfg := config.NewConfig(map[string]interface{}{
-		"videoOutput": "gpu",
-	})
+	cfg := &config.PlayerConfig{VideoOutput: "gpu"}
 	args := BuildMPVArgs(cfg)
 
 	found := false
@@ -536,9 +524,7 @@ func TestBuildArgs_VideoOutput(t *testing.T) {
 }
 
 func TestBuildArgs_AudioOutput(t *testing.T) {
-	cfg := config.NewConfig(map[string]interface{}{
-		"audioOutput": "alsa",
-	})
+	cfg := &config.PlayerConfig{AudioOutput: "alsa"}
 	args := BuildMPVArgs(cfg)
 
 	found := false
@@ -553,9 +539,7 @@ func TestBuildArgs_AudioOutput(t *testing.T) {
 }
 
 func TestBuildArgs_AudioDevice(t *testing.T) {
-	cfg := config.NewConfig(map[string]interface{}{
-		"audioDevice": "hw:0,0",
-	})
+	cfg := &config.PlayerConfig{AudioDevice: "hw:0,0"}
 	args := BuildMPVArgs(cfg)
 
 	found := false
@@ -570,9 +554,7 @@ func TestBuildArgs_AudioDevice(t *testing.T) {
 }
 
 func TestBuildArgs_CustomArgs(t *testing.T) {
-	cfg := config.NewConfig(map[string]interface{}{
-		"args": []interface{}{"--no-border", "--profile=gpu-hq"},
-	})
+	cfg := &config.PlayerConfig{Args: []string{"--no-border", "--profile=gpu-hq"}}
 	args := BuildMPVArgs(cfg)
 
 	foundNoBorder := false
@@ -594,13 +576,13 @@ func TestBuildArgs_CustomArgs(t *testing.T) {
 }
 
 func TestBuildArgs_SubtitlesConfig(t *testing.T) {
-	cfg := config.NewConfig(map[string]interface{}{
-		"subtitles": map[string]interface{}{
-			"font":  "Droid Sans",
-			"color": "#FFFFFF",
-			"bold":  true,
+	cfg := &config.PlayerConfig{
+		Subtitles: config.SubtitlesConfig{
+			Font:  "Droid Sans",
+			Color: config.StrPtr("#FFFFFF"),
+			Bold:  true,
 		},
-	})
+	}
 	args := BuildMPVArgs(cfg)
 
 	found := make(map[string]bool)
@@ -620,12 +602,11 @@ func TestBuildArgs_SubtitlesConfig(t *testing.T) {
 }
 
 func TestBuildArgs_SubtitlesNilValue(t *testing.T) {
-	cfg := config.NewConfig(map[string]interface{}{
-		"subtitles": map[string]interface{}{
-			"font":       "Droid Sans",
-			"borderSize": nil,
+	cfg := &config.PlayerConfig{
+		Subtitles: config.SubtitlesConfig{
+			Font: "Droid Sans",
 		},
-	})
+	}
 	args := BuildMPVArgs(cfg)
 
 	for _, a := range args {
@@ -636,20 +617,24 @@ func TestBuildArgs_SubtitlesNilValue(t *testing.T) {
 }
 
 func TestBuildArgs_NoSubtitles(t *testing.T) {
-	cfg := config.NewConfig(map[string]interface{}{})
+	cfg := &config.PlayerConfig{Monitor: -1}
 	args := BuildMPVArgs(cfg)
 
 	for _, a := range args {
 		if len(a) > 5 && a[:5] == "--sub" {
-			t.Errorf("expected no subtitle args when no subtitles config, got %q", a)
+			// Only value-type subtitle args are emitted with zero values;
+			// optional pointer fields (color, borderSize, etc.) should not appear
+			if a == "--sub-color=" || a == "--sub-border-size=" || a == "--sub-border-color=" ||
+				a == "--sub-back-color=" || a == "--sub-shadow-color=" || a == "--sub-shadow-offset=" ||
+				a == "--sub-margin-x=" || a == "--sub-margin-y=" {
+				t.Errorf("optional subtitle arg should not appear when nil, got %q", a)
+			}
 		}
 	}
 }
 
 func TestBuildArgs_MonitorNegative(t *testing.T) {
-	cfg := config.NewConfig(map[string]interface{}{
-		"monitor": -1,
-	})
+	cfg := &config.PlayerConfig{Monitor: -1}
 	args := BuildMPVArgs(cfg)
 
 	for _, a := range args {

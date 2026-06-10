@@ -50,7 +50,7 @@ type clientConn struct {
 }
 
 type Server struct {
-	cfg    *config.Config
+	cfg    *config.ServerConfig
 	logger Logger
 
 	methods   map[string]*MethodEntry
@@ -74,7 +74,7 @@ type Server struct {
 	listener   net.Listener
 }
 
-func NewServer(cfg *config.Config, logger Logger) *Server {
+func NewServer(cfg *config.ServerConfig, logger Logger) *Server {
 	if logger == nil {
 		logger = &defaultLogger{}
 	}
@@ -224,9 +224,7 @@ func (s *Server) Emit(event string, args ...interface{}) {
 }
 
 func (s *Server) Listen() error {
-	host := s.cfg.GetString("server.address", "0.0.0.0")
-	port := s.cfg.GetInt("server.port", 8080)
-	addr := fmt.Sprintf("%s:%d", host, port)
+	addr := fmt.Sprintf("%s:%d", s.cfg.Address, s.cfg.Port)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", s.handleWS)

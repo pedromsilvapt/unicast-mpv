@@ -13,26 +13,29 @@ import (
 	"github.com/unicast/unicast-mpv/pkg/server"
 )
 
-func newTestServer(t *testing.T) (*server.Server, *config.Config) {
+func newTestServer(t *testing.T) (*server.Server, *config.ServerConfig) {
 	t.Helper()
-	cfg := config.NewConfig(map[string]interface{}{
-		"server": map[string]interface{}{
-			"port":    0,
-			"address": "127.0.0.1",
-		},
-	})
+	srvCfg := &config.ServerConfig{
+		Port:    0,
+		Address: "127.0.0.1",
+	}
 	logger := &testCmdLogger{}
-	srv := server.NewServer(cfg, logger)
-	return srv, cfg
+	srv := server.NewServer(srvCfg, logger)
+	return srv, srvCfg
 }
 
-func newTestCommandRegistry(t *testing.T) (*CommandRegistry, *server.Server, *config.Config, *player.Player, *mpv.MPV) {
+func newTestPlayerConfig() *config.PlayerConfig {
+	return &config.PlayerConfig{}
+}
+
+func newTestCommandRegistry(t *testing.T) (*CommandRegistry, *server.Server, *config.ServerConfig, *player.Player, *mpv.MPV) {
 	t.Helper()
-	srv, cfg := newTestServer(t)
+	srv, srvCfg := newTestServer(t)
 	mpvInst := mpv.NewMPV(process.ProcessConfig{SocketPath: "/tmp/test-cmd.sock"})
-	p := player.NewPlayer(cfg, mpvInst, nil)
+	playerCfg := newTestPlayerConfig()
+	p := player.NewPlayer(playerCfg, mpvInst, nil)
 	reg := NewCommandRegistry(srv, p, mpvInst)
-	return reg, srv, cfg, p, mpvInst
+	return reg, srv, srvCfg, p, mpvInst
 }
 
 type testCmdLogger struct{}
@@ -44,9 +47,9 @@ func (l *testCmdLogger) Warn(msg string)  {}
 
 func TestNewCommandRegistry(t *testing.T) {
 	srv, _ := newTestServer(t)
-	cfg := config.NewConfig(map[string]interface{}{})
+	playerCfg := newTestPlayerConfig()
 	mpvInst := mpv.NewMPV(process.ProcessConfig{SocketPath: "/tmp/test-cmd.sock"})
-	p := player.NewPlayer(cfg, mpvInst, nil)
+	p := player.NewPlayer(playerCfg, mpvInst, nil)
 
 	reg := NewCommandRegistry(srv, p, mpvInst)
 	if reg == nil {
@@ -56,9 +59,9 @@ func TestNewCommandRegistry(t *testing.T) {
 
 func TestCommandRegistry_Register(t *testing.T) {
 	srv, _ := newTestServer(t)
-	cfg := config.NewConfig(map[string]interface{}{})
+	playerCfg := newTestPlayerConfig()
 	mpvInst := mpv.NewMPV(process.ProcessConfig{SocketPath: "/tmp/test-cmd.sock"})
-	p := player.NewPlayer(cfg, mpvInst, nil)
+	p := player.NewPlayer(playerCfg, mpvInst, nil)
 
 	reg := NewCommandRegistry(srv, p, mpvInst)
 
@@ -87,9 +90,9 @@ func TestCommandRegistry_Register(t *testing.T) {
 
 func TestCommandRegistry_RegisterNative_NotFound(t *testing.T) {
 	srv, _ := newTestServer(t)
-	cfg := config.NewConfig(map[string]interface{}{})
+	playerCfg := newTestPlayerConfig()
 	mpvInst := mpv.NewMPV(process.ProcessConfig{SocketPath: "/tmp/test-cmd.sock"})
-	p := player.NewPlayer(cfg, mpvInst, nil)
+	p := player.NewPlayer(playerCfg, mpvInst, nil)
 	reg := NewCommandRegistry(srv, p, mpvInst)
 
 	reg.RegisterNative("NonExistentMethod", schema.Tuple())
@@ -170,9 +173,10 @@ func TestNativeCommands_CamelCaseNamingConvention(t *testing.T) {
 }
 
 func TestPlayCommand_SchemaValidation(t *testing.T) {
-	reg, srv, cfg, _, _ := newTestCommandRegistry(t)
+	reg, srv, _, _, _ := newTestCommandRegistry(t)
 
-	NewPlayCommand(reg, cfg, nil)
+	playerCfg := newTestPlayerConfig()
+	NewPlayCommand(reg, playerCfg, nil)
 
 	entry := srv.MethodEntry("play")
 	if entry == nil {
@@ -228,9 +232,9 @@ func TestQuitCommand_SchemaValidation(t *testing.T) {
 
 func TestQuitCommand_WhenNotRunning(t *testing.T) {
 	srv, _ := newTestServer(t)
-	cfg := config.NewConfig(map[string]interface{}{})
+	playerCfg := newTestPlayerConfig()
 	mpvInst := mpv.NewMPV(process.ProcessConfig{SocketPath: "/tmp/test-cmd.sock"})
-	p := player.NewPlayer(cfg, mpvInst, nil)
+	p := player.NewPlayer(playerCfg, mpvInst, nil)
 
 	reg := NewCommandRegistry(srv, p, mpvInst)
 	NewQuitCommand(reg)
@@ -343,11 +347,12 @@ func TestSetMultiplePropertiesSchema(t *testing.T) {
 }
 
 func TestRegisterAllCommands(t *testing.T) {
-	reg, srv, cfg, _, mpvInst := newTestCommandRegistry(t)
+	reg, srv, _, _, mpvInst := newTestCommandRegistry(t)
 	status := player.NewPlayerStatus(mpvInst, nil)
 
+	playerCfg := newTestPlayerConfig()
 	NewNativeCommands(reg)
-	NewPlayCommand(reg, cfg, nil)
+	NewPlayCommand(reg, playerCfg, nil)
 	NewStatusCommand(reg, status, nil)
 	NewQuitCommand(reg)
 
@@ -384,9 +389,9 @@ func TestStatusCommand_RegistersHooksAndHandler(t *testing.T) {
 
 func TestStatusCommand_StatusHandlerReturnsInfo(t *testing.T) {
 	srv, _ := newTestServer(t)
-	cfg := config.NewConfig(map[string]interface{}{})
+	playerCfg := newTestPlayerConfig()
 	mpvInst := mpv.NewMPV(process.ProcessConfig{SocketPath: "/tmp/test-cmd.sock"})
-	p := player.NewPlayer(cfg, mpvInst, nil)
+	p := player.NewPlayer(playerCfg, mpvInst, nil)
 
 	reg := NewCommandRegistry(srv, p, mpvInst)
 	status := player.NewPlayerStatus(mpvInst, nil)
@@ -422,14 +427,12 @@ func TestStatusCommand_StatusHandlerReturnsInfo(t *testing.T) {
 
 func TestPlayCommand_WithRestartOnPlayConfig(t *testing.T) {
 	srv, _ := newTestServer(t)
-	cfg := config.NewConfig(map[string]interface{}{
-		"restartOnPlay": true,
-	})
+	playerCfg := &config.PlayerConfig{RestartOnPlay: true}
 	mpvInst := mpv.NewMPV(process.ProcessConfig{SocketPath: "/tmp/test-cmd.sock"})
-	p := player.NewPlayer(cfg, mpvInst, nil)
+	p := player.NewPlayer(playerCfg, mpvInst, nil)
 
 	reg := NewCommandRegistry(srv, p, mpvInst)
-	NewPlayCommand(reg, cfg, nil)
+	NewPlayCommand(reg, playerCfg, nil)
 
 	entry := srv.MethodEntry("play")
 	if entry == nil {
@@ -481,9 +484,9 @@ func TestConvertArg_NilValue(t *testing.T) {
 
 func TestCommandRegistry_MethodToHandler_CallWithArgs(t *testing.T) {
 	srv, _ := newTestServer(t)
-	cfg := config.NewConfig(map[string]interface{}{})
+	playerCfg := newTestPlayerConfig()
 	mpvInst := mpv.NewMPV(process.ProcessConfig{SocketPath: "/tmp/test-cmd.sock"})
-	p := player.NewPlayer(cfg, mpvInst, nil)
+	p := player.NewPlayer(playerCfg, mpvInst, nil)
 	reg := NewCommandRegistry(srv, p, mpvInst)
 
 	reg.Register("echo", schema.Tuple(schema.String()), func(args []interface{}) (interface{}, error) {
@@ -502,9 +505,9 @@ func TestCommandRegistry_MethodToHandler_CallWithArgs(t *testing.T) {
 
 func TestCommandRegistry_MethodToHandler_WithError(t *testing.T) {
 	srv, _ := newTestServer(t)
-	cfg := config.NewConfig(map[string]interface{}{})
+	playerCfg := newTestPlayerConfig()
 	mpvInst := mpv.NewMPV(process.ProcessConfig{SocketPath: "/tmp/test-cmd.sock"})
-	p := player.NewPlayer(cfg, mpvInst, nil)
+	p := player.NewPlayer(playerCfg, mpvInst, nil)
 	reg := NewCommandRegistry(srv, p, mpvInst)
 
 	testErr := fmt.Errorf("test error")
@@ -524,12 +527,12 @@ func TestCommandRegistry_MethodToHandler_WithError(t *testing.T) {
 
 func TestPlayCommand_PlayHandlerArgs(t *testing.T) {
 	srv, _ := newTestServer(t)
-	cfg := config.NewConfig(map[string]interface{}{})
+	playerCfg := newTestPlayerConfig()
 	mpvInst := mpv.NewMPV(process.ProcessConfig{SocketPath: "/tmp/test-cmd.sock"})
-	p := player.NewPlayer(cfg, mpvInst, nil)
+	p := player.NewPlayer(playerCfg, mpvInst, nil)
 
 	reg := NewCommandRegistry(srv, p, mpvInst)
-	NewPlayCommand(reg, cfg, nil)
+	NewPlayCommand(reg, playerCfg, nil)
 
 	entry := srv.MethodEntry("play")
 
@@ -541,9 +544,9 @@ func TestPlayCommand_PlayHandlerArgs(t *testing.T) {
 
 func TestStatusCommand_MpvEventUpdates(t *testing.T) {
 	srv, _ := newTestServer(t)
-	cfg := config.NewConfig(map[string]interface{}{})
+	playerCfg := newTestPlayerConfig()
 	mpvInst := mpv.NewMPV(process.ProcessConfig{SocketPath: "/tmp/test-cmd.sock"})
-	p := player.NewPlayer(cfg, mpvInst, nil)
+	p := player.NewPlayer(playerCfg, mpvInst, nil)
 
 	reg := NewCommandRegistry(srv, p, mpvInst)
 	status := player.NewPlayerStatus(mpvInst, nil)
@@ -563,9 +566,9 @@ func TestStatusCommand_MpvEventUpdates(t *testing.T) {
 
 func TestStatusCommand_TimePositionEvent(t *testing.T) {
 	srv, _ := newTestServer(t)
-	cfg := config.NewConfig(map[string]interface{}{})
+	playerCfg := newTestPlayerConfig()
 	mpvInst := mpv.NewMPV(process.ProcessConfig{SocketPath: "/tmp/test-cmd.sock"})
-	p := player.NewPlayer(cfg, mpvInst, nil)
+	p := player.NewPlayer(playerCfg, mpvInst, nil)
 
 	reg := NewCommandRegistry(srv, p, mpvInst)
 	status := player.NewPlayerStatus(mpvInst, nil)
