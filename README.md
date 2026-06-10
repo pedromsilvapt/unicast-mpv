@@ -2,11 +2,32 @@
 > A simple module that exposes [MPV](http://mpv.io/) to be controlled through a [RPC WebSockets](https://github.com/elpheria/rpc-websockets) API, that can be used with the [unicast](https://github.com/pedromsilvapt/unicast) server
 
 ## Installation
-This module can be used as a terminal application by simply installing it globally:
+
+### From .deb package (Debian/Ubuntu)
+
+Install from the Gitea Debian package registry:
 
 ```shell
-npm install -g unicast-mpv
+curl -fsSL https://gitea.home/api/packages/Silvas/debian/repository.key \
+  | sudo tee /etc/apt/trusted.gpg.d/gitea-unicast-mpv.asc
+echo "deb https://gitea.home/api/packages/Silvas/debian stable main" \
+  | sudo tee /etc/apt/sources.list.d/gitea-unicast-mpv.list
+sudo apt update && sudo apt install unicast-mpv
 ```
+
+Or download the `.deb` for your architecture and install manually:
+
+```shell
+sudo dpkg -i unicast-mpv_<version>_linux_<arch>.deb
+```
+
+### From source
+
+```shell
+make build
+sudo cp bin/unicast-mpv /usr/local/bin/
+```
+
 ## Usage
 Simply execute the application. The path to an YAML config file can optionally be passed as an argument. By default, the server listens on the port `2019`.
 ```shell
@@ -54,4 +75,43 @@ On Windows, the following configuration file is also loaded. If the MPV binary i
 ```yaml
 player:
     binary: C:\Program Files\mpv\mpv.exe
+```
+
+## Release Pipeline
+
+`.deb` packages for **linux/amd64** and **linux/arm64** are built with [GoReleaser](https://goreleaser.com/).
+
+### Local dry-run (no upload, no git tag required)
+
+```shell
+make snapshot
+```
+
+This builds the binary and `.deb` packages into `dist/` without publishing anything.
+
+### Local release (requires a git tag, publishes .deb to Gitea)
+
+```shell
+git tag v0.1.0
+make release GITEA_USERNAME=myuser GITEA_PASSWORD=mytoken
+```
+
+This builds `.deb` packages for both architectures and uploads them to the Gitea Debian registry.
+
+### Overridable package metadata
+
+| Variable                 | Default                                            |
+|--------------------------|----------------------------------------------------|
+| `DEB_MAINTAINER`         | `Pedro Silva <pemiolsi@hotmail.com>`               |
+| `DEB_VENDOR`             | `Pedro Silva`                                      |
+| `DEB_HOMEPAGE`           | `https://github.com/pedromsilvapt/unicast-mpv`     |
+| `GITEA_USERNAME`         | *(empty — must be set for `make release`)*          |
+| `GITEA_PASSWORD`         | *(empty — must be set for `make release`)*          |
+| `GITEA_PACKAGE_URL`      | `https://gitea.home/api/packages/Silvas/debian`    |
+| `GITEA_DEB_DISTRIBUTION` | `stable`                                            |
+| `GITEA_DEB_COMPONENT`    | `main`                                              |
+
+```shell
+make release GITEA_USERNAME=myuser GITEA_PASSWORD=mytoken
+make snapshot DEB_MAINTAINER="You <you@example.com>"
 ```

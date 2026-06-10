@@ -1,0 +1,61 @@
+version: 2
+
+project_name: unicast-mpv
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: unicast-mpv
+    main: ./cmd/unicast-mpv
+    binary: unicast-mpv
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/unicast/unicast-mpv/cmd/unicast-mpv.version={{ .Version }}
+
+archives:
+  - id: unicast-mpv
+    formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+nfpms:
+  - id: packages
+    package_name: unicast-mpv
+    ids:
+      - unicast-mpv
+    formats:
+      - deb
+    bindir: /usr/bin
+    section: utils
+    maintainer: "{{ .Env.DEB_MAINTAINER }}"
+    vendor: "{{ .Env.DEB_VENDOR }}"
+    homepage: "{{ .Env.DEB_HOMEPAGE }}"
+    description: Exposes MPV over a JSON-RPC WebSocket API.
+    license: MIT
+
+checksum:
+  name_template: checksums.txt
+
+release:
+  disable: true
+
+publishers:
+  - name: gitea-debian-registry
+    ids:
+      - packages
+    # NOTE We must retry because Goreleaser run this publish command in parallel, one time for each package file
+    #      In this case, once for amd64 and once for arm64. Gitea often returns 500 if trying to upload two files to the same package,
+    #      Hence the retry
+    cmd: >-
+      curl --fail --silent --show-error --retry 3
+        -u "{{ .Env.GITEA_USERNAME }}:{{ .Env.GITEA_PASSWORD }}"
+        --upload-file "{{ abs .ArtifactPath }}"
+        "{{ .Env.GITEA_PACKAGE_URL }}/pool/{{ .Env.GITEA_DEB_DISTRIBUTION }}/{{ .Env.GITEA_DEB_COMPONENT }}/upload"

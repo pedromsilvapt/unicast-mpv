@@ -22,6 +22,8 @@ import (
 	"github.com/unicast/unicast-mpv/pkg/server"
 )
 
+var version = "dev"
+
 //go:embed config
 var embeddedConfig embed.FS
 

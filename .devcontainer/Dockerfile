@@ -86,3 +86,8 @@ RUN wget https://go.dev/dl/go1.26.1.linux-amd64.tar.gz -O /tmp/go.tar.gz && \
 
 # Add Go to PATH for all users
 ENV PATH=/usr/local/go/bin:${PATH}
+
+# Install GoReleaser
+RUN curl -fsSL https://github.com/goreleaser/goreleaser/releases/download/v2.16.0/goreleaser_2.16.0_amd64.deb -o /tmp/goreleaser.deb && \
+    sudo dpkg -i /tmp/goreleaser.deb && \
+    rm /tmp/goreleaser.deb

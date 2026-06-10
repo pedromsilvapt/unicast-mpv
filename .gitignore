@@ -33,6 +33,7 @@ go.work.sum
 
 # Built binaries
 bin/*
+dist/*
 
 .devcontainer/certs/*
 !.devcontainer/certs/.gitkeep
