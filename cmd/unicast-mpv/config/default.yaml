@@ -1,4 +1,6 @@
+debug: false
 player:
+    socketPath: /tmp/node-mpv.sock
     fullscreen: true
     monitor: null
     onTop: false

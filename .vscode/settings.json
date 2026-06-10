@@ -1,0 +1,19 @@
+{
+  "editor.formatOnSave": false,
+  "VsCodeTaskButtons.showCounter": false,
+  "VsCodeTaskButtons.tasks": [
+    {
+      "label": "OpenCode",
+      "alignment": "left",
+      "task": "OpenCode",
+      "tooltip": "Start OpenCode Web Server"
+    },
+    {
+      "label": "Build",
+      "alignment": "left",
+      "task": "Build",
+      "tooltip": "Build Golang",
+      "description": "Builds the golang application"
+    }
+  ]
+}

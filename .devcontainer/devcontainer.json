@@ -1,0 +1,74 @@
+{
+  "name": "Unicast MPV",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "runArgs": [
+    "--hostname=unicast-mpv-devcontainer",
+    // "--mount=type=bind,src=/tmp/.X11-unix,dst=/var/opt/.X11-unix,bind-propagation=rshared",
+    "--volume=/tmp/.X11-unix:/x11-unix:rw",
+    "--privileged"
+  ],
+  "features": {
+    // "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "postCreateCommand": "echo \"Hello\"",
+  "postStartCommand": "sudo sysctl -p",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csharp",
+        "ms-dotnettools.vscode-dotnet-runtime",
+        "bradlc.vscode-tailwindcss",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "formulahendry.auto-rename-tag",
+        "ms-azuretools.vscode-docker",
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-pg",
+        "spencerwmiles.vscode-task-buttons",
+        "fedaykindev.openchamber",
+        "golang.go"
+      ],
+      "settings": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "[csharp]": {
+          "editor.defaultFormatter": "ms-dotnettools.csharp"
+        }
+      }
+    }
+  },
+  "mounts": [
+    {
+      "source": "${localEnv:HOME}/.config/opencode",
+      "target": "/home/vscode/.config/opencode",
+      "type": "bind"
+    },
+    {
+      "source": "${localEnv:HOME}/.local/share/opencode",
+      "target": "/home/vscode/.local/share/opencode",
+      "type": "bind"
+    },
+    {
+      "source": "${localEnv:HOME}/.local/state/opencode",
+      "target": "/home/vscode/.local/state/opencode",
+      "type": "bind"
+    }
+  ],
+  "forwardPorts": [80, 4096],
+  "portsAttributes": {
+    "80": {
+      "label": "HTTP",
+      "onAutoForward": "silent"
+    },
+    "4096": {
+      "label": "Open Code",
+      "onAutoForward": "silent"
+    }
+  },
+  "otherPortsAttributes": { "onAutoForward": "ignore" }
+  // "runServices": ["postgres"],
+  // "dockerComposeFile": "../docker-compose.yml",
+  // "service": "devcontainer",
+  // "workspaceFolder": "/workspace"
+}
